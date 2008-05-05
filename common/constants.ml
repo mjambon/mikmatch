@@ -1,6 +1,8 @@
-(*pp camlp4o q_MLast.cmo -loc loc *)
+(*pp camlp4orf *)
 
-let dummy_loc = Declare_once.dummy_loc
+open Camlp4.PreCast
+
+let dummy_loc = Loc.ghost
 
 let debug = false
 let reserved_prefix = if debug then "_" else "__micmatch_"
@@ -16,13 +18,13 @@ let any_exn = reserved_prefix ^ "any_exn"
 let any_target = reserved_prefix ^ "any_target"
 let any_result = reserved_prefix ^ "any_result"
 
-let expr_exit loc =
+let expr_exit _loc =
   <:expr< $uid: !mod_runtime$.$uid:exn_exit$ >>
 
-let raise_exit loc =
-  <:expr< raise $expr_exit loc$ >>
+let raise_exit _loc =
+  <:expr< raise $expr_exit _loc$ >>
 
-let patt_exit loc =
+let patt_exit _loc =
   <:patt< $uid: !mod_runtime$.$uid:exn_exit$ >>
 
 let shared re_name = re_name ^ "shared"

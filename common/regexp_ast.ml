@@ -1,10 +1,13 @@
+(* $Id$ *)
 (* Abstract syntax tree for regular expressions *)
+
+open Camlp4.PreCast
 
 type converter = [ `Int 
 		 | `Float
 		 | `Option
-		 | `Custom of MLast.expr 
-		 | `Value of MLast.expr ]
+		 | `Custom of Ast.expr 
+		 | `Value of Ast.expr ]
 
 module S = Set.Make (String)
 
@@ -37,7 +40,7 @@ struct
   let diff m1 m2 = S.diff (keys m1) (keys m2)
 end
 
-type named_groups = (MLast.loc * int * converter option) list Named_groups.t
+type named_groups = (Ast.loc * int * converter option) list Named_groups.t
 
 
 let add_new loc name conv group_num set =
@@ -82,24 +85,24 @@ type repetition_kind =
 type greediness = bool
 
 type ast =
-    Epsilon of MLast.loc
-  | Characters of MLast.loc * Charset.t
-  | Sequence of MLast.loc * ast * ast
-  | Alternative of MLast.loc 
+    Epsilon of Ast.loc
+  | Characters of Ast.loc * Charset.t
+  | Sequence of Ast.loc * ast * ast
+  | Alternative of Ast.loc 
       * ast (* choice 1 *)
       * ast (* choice 2 *)
       * S.t (* group names *) 
       * S.t (* position names *)
-  | Repetition of MLast.loc * (repetition_kind * greediness) * ast
-  | Possessive of MLast.loc * ast
-  | Bind of MLast.loc * ast * string * converter option
-  | Bind_pos of MLast.loc * string
-  | Backref of MLast.loc * string
-  | Variable of MLast.loc * MLast.expr
-  | Nocase_variable of MLast.loc * MLast.expr
-  | Special of MLast.loc * string * (string * int option)
-  | Lookahead of MLast.loc * bool * ast
-  | Lookbehind of MLast.loc * bool * ast
+  | Repetition of Ast.loc * (repetition_kind * greediness) * ast
+  | Possessive of Ast.loc * ast
+  | Bind of Ast.loc * ast * string * converter option
+  | Bind_pos of Ast.loc * string
+  | Backref of Ast.loc * string
+  | Variable of Ast.loc * Ast.expr
+  | Nocase_variable of Ast.loc * Ast.expr
+  | Special of Ast.loc * string * (string * int option)
+  | Lookahead of Ast.loc * bool * ast
+  | Lookbehind of Ast.loc * bool * ast
   | Closed of ast
 
 let rec loc_of_regexp = function
@@ -234,9 +237,9 @@ let of_string loc s =
 	     Sequence (loc, (Characters (loc, Charset.singleton c)), re))
 	  l (Epsilon loc)
 
-let as_charset loc msg = function
-    Characters (loc, set) -> set
-  | _ -> Stdpp.raise_with_loc loc (Failure msg)
+let as_charset _loc msg = function
+    Characters (_loc, set) -> set
+  | _ -> Messages.failure _loc msg
 
 let rec warn_bindings w = function
     Bind (loc, e, s, conv) ->

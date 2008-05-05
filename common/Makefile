@@ -1,23 +1,17 @@
 SOURCES = \
-  declare_once.mli declare_once.ml \
-  pa_use.ml \
+  global_def.ml \
   messages.ml charset.ml \
   constants.ml \
   regexp_ast.ml \
   select_lib.ml
 
+OCAMLFLAGS = -dtypes
 USE_CAMLP4 = yes
 
-DECLDIR = ../external-libs/regexp-pp/common
+.PHONY: default
+default: bcnl
 
-default: external bcnl
-external:
-#	cp -f $(DECLDIR)/declare_once.mli $(DECLDIR)/declare_once.ml .
-	test -f pa_use.ml || ln -s ../public-domain/pa_use.ml .
-
-TRASH = \
- *~ version_filter declare_once.mli declare_once.ml \
- pa_use.ml
+TRASH = *~ 
 
 OCAMLMAKEFILE = ../OCamlMakefile
 include $(OCAMLMAKEFILE)

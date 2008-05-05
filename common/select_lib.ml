@@ -1,12 +1,15 @@
-open MLast
+(* $Id$ *)
 
-let not_implemented loc =
-  Stdpp.raise_with_loc loc (Failure "not implemented")
+open Camlp4.PreCast
+open Ast
+
+let not_implemented _loc =
+  Messages.failure _loc "not implemented"
 
 let fail _ = failwith "not implemented"
 
-type regexp_args = (string * MLast.expr) list
-type regexp_source = [ `String of string | `Expr of MLast.expr ] list
+type regexp_args = (string * Ast.expr) list
+type regexp_source = [ `String of string | `Expr of Ast.expr ] list
 
 type regexp_lib = 
     { predefined_regexps : (string * Regexp_ast.ast) list;

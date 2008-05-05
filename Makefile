@@ -1,6 +1,6 @@
 .PHONY: defaults install uninstall all opt micmatch-pcre micmatch-str \
         common install-str install-pcre uninstall-str uninstall-pcre \
-        backup clean archive
+        backup clean archive pcre str
 
 ifndef PREFIX
   BINDIR = $(shell dirname `which ocaml`)
@@ -22,9 +22,9 @@ uninstall: uninstall-pcre
 
 ## GODIVA/GODI targets
 all: common
-	cd micmatch_pcre && $(MAKE) all-bc
+	cd pcre && $(MAKE) all-bc
 opt: common
-	cd micmatch_pcre && $(MAKE) all-nc
+	cd pcre && $(MAKE) all-nc
 
 ## end of GODIVA targets
 
@@ -32,22 +32,22 @@ micmatch-pcre: common pcre
 micmatch-str: common str
 
 common:
-	cd micmatch_common && $(MAKE)
+	cd common && $(MAKE)
 
 str: common
-	cd micmatch_str && $(MAKE)
+	cd str && $(MAKE)
 pcre: common
-	cd micmatch_pcre && $(MAKE)
+	cd pcre && $(MAKE)
 
 install-str:
-	cd micmatch_str && $(MAKE) install
+	cd str && $(MAKE) install
 install-pcre:
-	cd micmatch_pcre && $(MAKE) install
+	cd pcre && $(MAKE) install
 
 uninstall-str:
-	cd micmatch_str && $(MAKE) uninstall
+	cd str && $(MAKE) uninstall
 uninstall-pcre:
-	cd micmatch_pcre && $(MAKE) uninstall
+	cd pcre && $(MAKE) uninstall
 
 
 backup:
@@ -55,9 +55,9 @@ backup:
 
 clean::
 	cd doc && $(MAKE) clean
-	cd micmatch_common && $(MAKE) clean
-	cd micmatch_str && $(MAKE) clean
-	cd micmatch_pcre && $(MAKE) clean
+	cd common && $(MAKE) clean
+	cd str && $(MAKE) clean
+	cd pcre && $(MAKE) clean
 
 
 
@@ -67,8 +67,8 @@ VERSION = $(shell ./VERSION)
 # and maybe other things.
 archive:
 	@echo "Making archive for version $(VERSION)"
-	cd micmatch_str && $(MAKE) version
-	cd micmatch_pcre && $(MAKE) version
+	cd str && $(MAKE) version
+	cd pcre && $(MAKE) version
 	cd doc && $(MAKE)
 	rm -rf /tmp/micmatch /tmp/micmatch-$(VERSION) && \
 	 	cp -r . /tmp/micmatch && \

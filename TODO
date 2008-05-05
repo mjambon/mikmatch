@@ -1,3 +1,6 @@
+General:
+- Port to the new camlp4 -> micmatch-redux
+
 Documentation:
 - mention all the rules which are overridden, since it may 
 cause incompatibilities with other extensions which do the same
@@ -16,10 +19,8 @@ Features:
 Packaging:
 - it would be nice to detach regexp-pp, and detach the internal tools
   from regexp-pp that are used by micmatch (sent request to the author
-  2005-01-28)
-- put micmatch_str and micmatch_pcre under the same ocamlfind package, 
-  if possible:
-  micmatch.str micmatch.pcre
+  2005-01-28). Update 2008-05-05: micmatch-redux will most likely
+  remove the dependency on regexp-pp.
 
 Possible optimizations:
 - computation of only the substrings that are effectively used (or at 

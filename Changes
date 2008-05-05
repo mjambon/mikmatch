@@ -1,8 +1,13 @@
-Changes in the successive versions of Micmatch
-==============================================
+Changes in the successive versions of Micmatch-redux
+====================================================
+
+Micmatch-redux is the port of micmatch 0.700 to the "new" Camlp4 (3.10).
+Micmatch-redux is not compatible with Camlp4 <= 3.09 or Camlp5.
 
 Please send bug reports, comments or feature requests to 
-Martin Jambon <martin_jambon@emailuser.net>
+Martin Jambon <martin@mjambon.com> or to the public forum at 
+http://groups.google.com/group/micmatch
+
 
 opt = optimizations
 +ui = additions in the user interface
@@ -10,6 +15,13 @@ opt = optimizations
 bug = bug or security fix
 doc = major changes in the documentation
 pkg = changes in the structure of the package or in the installation procedure
+
+
+
+------------------------- Micmatch pre-redux --------------------------
+
+This is the history for micmatch before the port to Camlp4 3.10, named
+micmatch-redux.
 
 0.700: [bug] It was not possible to use "Not" outside of micmatch_pcre
              regexps. This is now fixed.
