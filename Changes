@@ -1,0 +1,168 @@
+Changes in the successive versions of Micmatch
+==============================================
+
+Please send bug reports, comments or feature requests to 
+Martin Jambon <martin_jambon@emailuser.net>
+
+opt = optimizations
++ui = additions in the user interface
+-ui = restrictions in the user interface
+bug = bug or security fix
+doc = major changes in the documentation
+pkg = changes in the structure of the package or in the installation procedure
+
+0.700: [bug] It was not possible to use "Not" outside of micmatch_pcre
+             regexps. This is now fixed.
+
+0.699: [+ui] added CAPTURE and COLLECTOBJ
+
+0.698: [bug] fixed dynamic linking problems on MacOS/NetBSD by removing
+             version_filter. As a consequence, only recent versions of camlp4
+             are now supported (starting from 3.08.4, maybe earlier).
+       [bug] fixed missing dependency on "common" for "pcre" and "str" 
+             targets in main Makefile
+
+0.697: [bug] installation of executables now correctly follows $BINDIR 
+             or $PREFIX/bin
+       [+ui] new FILTER macro which returns true or false
+       [+ui] changed grammar entry level of macros 
+             (now "expr1" instead of "top"). Allows for less parentheses.
+       [pkg] added dependency to the Unix library
+       [+ui] added filename globbing in the Micmatch library
+       [+ui] added experimental support for views
+
+0.696: [pkg] removed micmatch_pcre.godiva which is a big source of 
+             trouble
+
+0.695: [pkg] minor changes for GODI
+       [bug] added .PHONY targets in Makefile
+
+0.694: [+ui] int and float predefined regexps are not experimental anymore
+       [bug] fixed null-character related bugs 
+	     (Pcre.quote does not escape them)
+       [bug] fixed bug with ocaml 3.08.1 (and probably earlier): Not_found
+             was raised during initialization of the preprocessing library
+             (deletion of grammar rules which didn't exist)
+
+0.693: [+ui] added support for regexps with arguments (gaps of the
+             form @some_expr) which are evaluated at runtime.
+	     It uses a cache which stores the most recently used
+             compiled regexps for different sets of arguments.
+       [opt] optionally shared data structures are now created only where
+             necessary (just reduces the code size a little)
+
+0.692: [bug, +ui] added "nan" and "inf" (caseless, optional sign) 
+             to the set of strings recognized by the "float" pattern.
+
+0.691: [+ui] experimental addition of predefined regexps "int" and "float"
+
+0.690: [+ui] added support for global shortcut bindings:
+               let / ... / = ... ;;
+
+0.689: [+ui] 
+           - added support for shortcuts: 
+               let RE ... = ... in ...
+               let / ... / = ... in ...
+           - official support for / ... / as an equivalent of RE ... (patterns)
+           - general support for:
+               let try ... = ... in ... with ... 
+       [bug] code with misplaced RE patterns cannot compile anymore
+
+0.688: [+ui] added support for automatic type conversions:
+               (... as x : int)
+               (... as x := int_of_string)
+               (... as x = Zero)
+       [bug] fixed bug which caused some alternative patterns to be 
+             ignored. Simplest example that caused the bug: 
+             match "c" with (RE "a") | (RE "b") | (RE "c") -> ();;
+
+0.687: [doc] added warning against inaccessible named subgroups or positional
+             markers such as in ("abc" as local !local)*
+       [+ui] added option -do for command-line programs (like sh -c or perl -e)
+
+0.686: [bug] fixed bugs related to patterns matching empty substrings
+             (avoiding infinite loops in such cases; 
+              for instance (SPLIT "") and (SPLIT "") ~full:true both work).
+
+0.685: [bug] Fixed the following bugs:
+           - was counting special "any" as 0 characters instead of 1 
+             (lookbehind assertions)
+           - "Not_found" problems with recent versions of Pcre due
+             to the 2004-04-29 change in Pcre.get_substring
+           - silent removal of bindings which don't make sense in assertions
+             (BTW I don't know how to print a precise warning instead)
+
+0.684: [+ui] added support for lookaround assertions (PCRE only): 
+             < lookbehind . lookahead > or < lookahead >
+
+0.683: [+ui] added support for positional markers in regexps (e.g. %pos)
+
+0.682: [bug] added compatibility with OCaml 3.09+dev14
+
+0.681: [bug] fixed bug in REPLACE_FIRST
+
+0.680: [bug] replaced the regexp-pp package with the newest version
+             for compatibility with OCaml 3.09+dev6
+
+0.679: [+ui] added ~share option to MATCH and SEARCH_FIRST
+       [doc] updated and commented example/shootout.ml
+
+0.678: [+ui] added experimental / ... / syntax in patterns
+
+0.677: [pkg] fixed bugs in META files
+       [+ui] added "save" and "save_lines" functions to the library
+       [bug] now bos, eos, bol and eol assertions work (micmatch_pcre)
+
+0.676: [pkg] added version ID in the name of the archives
+       [bug] 
+           - fixed bug which prevented the use of the Camlp4 
+             syntax extension for stream parsers (was due to a wrong LEVEL)
+           - fixed fatal bug in micmatch_str which was accidentally
+             introduced in the last version (was due to an inexisting LEVEL)
+       [+ui] added a short Micmatch.Fixed module for handling text
+             with fixed-width columns.
+
+0.675: [bug] several bugfixes in the installation procedure 
+             (correct clean, any name for gmake OK, camlmix not required)
+       [pkg] separate installation of micmatch_pcre (default)
+             and micmatch_str (now optional)
+
+0.674: [+ui] 
+           - added full support for PCRE-OCaml, with
+             many additional macros and specifications
+           - POSIX characters classes are now predefined
+             for both micmatch_str and micmatch_pcre
+           - micmatch and micmatch_str are now binary executables
+             so that micmatch scripts can be made self-executable
+             on Unix-like systems
+       [doc] updated the reference manual and the web page
+       [-ui] deprecated use of {123-}. Use {123+} instead.
+       
+0.673: [bug] added support for OCaml 3.08.1 (replaced regexp-pp package)
+
+0.672: [+ui,bug]
+           - added checks for unbalanced or redundant local bindings
+           - added support for local backreferences
+
+0.671: [+ui]
+           - added support for backreferences (!ident)
+           - tries alternatives from left to right, and is greedy by
+             default for optional matches (? operator). Not official,
+             since these properties are not specified in the Str library.
+           - function keyword replaced by fun in the revised syntax
+             (still not tested though)
+
+0.670: [+ui] addition of the ~ operator for ignoring case (uses the OCaml
+             definition of case, i.e. the latin1 charset).
+       [doc] created the reference manual
+
+0.669: [opt] tail-recursivity is now preserved (options -direct/-tailrec)
+       [-ui] regexpr{-12} is not valid anymore because it looks strange
+             and ambiguous. regexpr{0-12} should be used instead.
+             regexpr{12-} is still valid.
+0.668: [bug] 
+           - fixed abusive simplification (missing try ... with)
+           - added missing binding in multithreaded mode
+           - fixed the buggy Makefile on the web page
+0.667: [opt] alternatives between charsets handled like unions of charsets
+0.666: [*]   initial public release (2004-08-02)

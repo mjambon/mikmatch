@@ -1,0 +1,3 @@
+#!/bin/sh
+micmatch_version="0.700"
+echo -n $micmatch_version
