@@ -1,0 +1,10 @@
+name = "micmatch_str"
+version = "VERSION"
+description = "Pattern matching extended with regexps in Ocamllex syntax"
+
+requires = "camlp4 str unix"
+archive(syntax,toploop) = "pa_micmatch_str.cma run_micmatch_str.cma"
+archive(syntax,create_toploop) = "pa_micmatch_str.cma run_micmatch_str.cma"
+archive(syntax,preprocessor) = "pa_micmatch_str.cma"
+archive(byte)    = "run_micmatch_str.cma"
+archive(native)  = "run_micmatch_str.cmxa"

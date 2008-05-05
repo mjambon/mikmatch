@@ -1,0 +1,1061 @@
+(*pp $PP *)
+
+open Printf
+
+open Regexp_ast
+open Constants
+open Select_lib
+
+(* Regular expression to match *)
+type regexp_info = 
+    { re_loc : MLast.loc;
+      re_name : string; (* identifier of the compiled regexp *)
+      re_num : int;
+      re_args : regexp_args;
+      re_source : regexp_source; (* string representation of the
+				    regexp, with possible gaps *)
+      re_groups : 
+	named_groups (* names of substrings *)
+      * named_groups (* names of positions *) }
+
+(* Recorded view pattern *)
+type view_info = { view_loc : MLast.loc;
+		   view_unique_name : string;
+		   view_name_loc : MLast.loc; (* location of full name *)
+		   view_name : string; (* base name *)
+		   view_path : string list; (* module path w/o base name *)
+		   view_num : int; (* number of this view pattern *)
+		   view_arg : MLast.patt option }
+
+type special_info = [ `Regexp of regexp_info | `View of view_info ]
+
+
+(* Sets of strings with location *)
+
+let compare_loc_string (_, s1) (_, s2) = String.compare s1 s2
+
+module Names =
+  Set.Make (struct
+	      type t = MLast.loc * string
+	      let compare = compare_loc_string
+	    end)
+
+let add_new loc set x =
+  if Names.mem x set then
+    Messages.multiple_binding loc [(snd x)];
+  Names.add x set
+
+let add_if_needed loc set x = Names.add x set
+
+
+let output_match_ref = ref (fun _ -> assert false)
+
+let unloc l = List.map snd l
+
+let pattify loc l =
+  match List.map (fun (loc, s) -> <:patt< $lid:s$ >>) l with
+      [] -> <:patt< () >>
+    | [p] -> p
+    | pl -> <:patt< ( $list:pl$ ) >>
+
+let exprify loc l =
+  match List.map (fun (loc, s) -> <:expr< $lid:s$ >>) l with
+      [] -> <:expr< () >>
+    | [e] -> e
+    | el -> <:expr< ( $list:el$ ) >>
+
+let check_same_ids loc e1 e2 =
+  if not (Names.equal e1 e2) then
+    let diff_elements = 
+      unloc 
+	(Names.elements 
+	   (Names.diff (Names.union e1 e2) (Names.inter e1 e2))) in
+    Messages.unbalanced_bindings loc diff_elements
+
+let check_different_ids loc e1 e2 =
+  let inter = Names.inter e1 e2 in
+  if not (Names.equal inter Names.empty) then
+    Messages.multiple_binding loc (unloc (Names.elements inter))
+
+let get_all_names re =
+  let loc = re.re_loc in
+  let get_names x = 
+    Named_groups.fold 
+      (fun group_name _ accu ->
+	 add_new loc accu (loc, group_name))
+      x
+      Names.empty in
+
+  let (groups, positions) = re.re_groups in
+  let group_names = get_names groups
+  and position_names = get_names positions in
+  check_different_ids loc group_names position_names;
+  Names.union group_names position_names
+
+let list_all_names re = 
+  Names.elements (get_all_names re)
+
+
+(* Subpatterns with info about their variables *)
+type sub_patt = 
+    { sub_patt : MLast.patt;
+      sub_names : Names.t;
+      sub_specials : special_info list;
+      sub_alternatives : (string (* name of the target *)
+			  * sub_patt) list }
+
+
+(* Options *)
+let lib = ref Select_lib.dummy
+let tailrec = ref true
+
+
+let has_prefix ~prefix s =
+  String.length s >= String.length prefix &&
+  String.sub s 0 (String.length prefix) = prefix
+
+let match_suffix ~suffix s =
+  let len = String.length s in
+  let slen = String.length suffix in
+  if len >= slen &&
+    String.sub s (len - slen) slen = suffix then 
+      String.sub s 0 (len - slen)
+  else 
+    invalid_arg "match_suffix"
+  
+
+let is_reserved s = has_prefix ~prefix:reserved_prefix s
+
+let classify_id s =
+  if has_prefix ~prefix:reserved_prefix s then
+    if has_prefix ~prefix:regexp_prefix s then `Regexp
+    else if has_prefix ~prefix:view_prefix s then `View
+    else assert false
+  else `Other
+
+let regexp_of_var var_name =
+  match_suffix ~suffix:"_target" var_name
+
+let view_of_var var_name =
+  match_suffix ~suffix:"_target" var_name
+
+let var_of_regexp re_name =
+  re_name ^ "_target"
+
+let var_of_view unique_view_name =
+  unique_view_name ^ "_target"
+
+let forbidden_type = reserved_prefix ^ "syntax_error"
+
+let posix_regexps =
+  List.map 
+    (fun (name, set) -> (name, Characters (dummy_loc, set)))
+    Charset.Posix.all
+
+
+module Micmatch_regexps =
+struct
+  let loc = dummy_loc
+  let set x = Characters (loc, x)
+  let cset s = set (Charset.of_string s)
+  let opt x = Repetition (loc, (Option, true), x)
+  let plus x = Repetition (loc, (Plus, true), x)
+  let star x = Repetition (loc, (Star, true), x)
+  let lr f l = 
+    match List.rev l with
+	[] -> Epsilon loc
+      | last :: rl ->
+	  List.fold_left
+	    (fun accu x -> f x accu)
+	    last
+	    rl
+  let seq l = lr (fun x y -> Sequence (loc, x, y)) l
+  let alt l = lr (fun x y -> Alternative (loc, x, y, S.empty, S.empty)) l
+  let explode s = 
+    let l = ref [] in
+    for i = String.length s - 1 downto 0 do
+      l := set (Charset.singleton s.[i]) :: !l
+    done;
+    !l
+  let string s = seq (explode s)
+
+  open Charset.Posix
+
+  let opt_sign = opt (cset "-+")
+  let d = set digit
+
+(*
+RE int = ["-+"]? ( "0" ( ["xX"] xdigit+
+		       | ["oO"] ['0'-'7']+
+		       | ["bB"] ["01"]+ )
+                 | digit+ )
+*)
+
+  let int = 
+    seq [
+      opt_sign;
+      (alt [ 
+	 seq [
+	   (cset "0");
+	   (alt [ 
+	      seq [ (cset "xX"); (plus (set xdigit)) ];
+	      seq [ (cset "oO"); (plus (set (Charset.range '0' '7'))) ];
+	      seq [ (cset "bB"); (plus (cset "01")) ];
+	    ]);
+	 ];
+	 plus d;
+       ])
+    ]
+
+(*
+RE float = 
+  ["-+"]? 
+     ( ( digit+ ("." digit* )? | "." digit+ ) (["eE"] ["+-"]? digit+ )?
+       | "nan"~ 
+       | "inf"~ )
+*)
+
+  let float =
+    seq [
+      opt_sign;
+      alt [
+	seq [
+	  alt [
+	    seq [
+              plus d;
+	      opt (seq [ cset "."; star d ])
+	    ];
+	    seq [ cset "."; plus d ];
+	  ];
+	  opt 
+	    (seq [
+	       cset "eE";
+	       opt (cset "+-");
+	       plus d;
+	     ])
+	];
+	nocase (string "nan");
+	nocase (string "inf");
+      ]
+    ]
+
+  let all = 
+    [ "int", int;
+      "float", float ]
+end
+
+
+let named_regexps =
+  (Hashtbl.create 13 : (string, Regexp_ast.ast) Hashtbl.t)
+
+let fill_tbl tbl l =
+  List.iter 
+    (fun (key, data) -> Hashtbl.add tbl key data)
+    l
+
+let init_named_regexps () =
+  fill_tbl named_regexps posix_regexps;
+  fill_tbl named_regexps Micmatch_regexps.all;
+  fill_tbl named_regexps !(lib).predefined_regexps
+
+let reset_named_regexps () =
+  Hashtbl.clear named_regexps;
+  fill_tbl named_regexps posix_regexps;
+  fill_tbl named_regexps Micmatch_regexps.all;
+  fill_tbl named_regexps !(lib).predefined_regexps
+
+let select_lib x =
+  lib := x;
+  reset_named_regexps ()
+
+
+let compiled_regexps = Hashtbl.create 100
+let views = Hashtbl.create 100
+
+let add_compiled_regexp ~anchored postbindings
+  loc name num re_args re_source named_groups =
+  let expr = 
+    let compile =
+      if anchored then (!lib).compile_regexp_match
+      else (!lib).compile_regexp_search in
+    compile dummy_loc re_args re_source in
+  Declare_once.declare ~package:"micmatch" name (Declare_once.Expr expr);
+  List.iter 
+    (fun (ident, e) ->
+       Declare_once.declare ~package:"micmatch" ident (Declare_once.Expr e))
+    postbindings;
+  Hashtbl.add compiled_regexps 
+    name
+    { re_loc = loc;
+      re_num = num;
+      re_name = name;
+      re_source = re_source;
+      re_args = re_args;
+      re_groups = named_groups }
+
+let add_view loc unique_name num (name_loc, name, full_name) arg =
+  Hashtbl.add views unique_name { view_loc = loc;
+				  view_num = num;
+				  view_unique_name = unique_name;
+				  view_name = name;
+				  view_name_loc = name_loc;
+				  view_path = full_name;
+				  view_arg = arg }
+
+
+let find_compiled_regexp loc name =
+  try Hashtbl.find compiled_regexps name
+  with Not_found -> 
+    Stdpp.raise_with_loc loc 
+    (Invalid_argument ("find_compiled_regexp: " ^ name))
+
+let find_view loc name =
+  try Hashtbl.find views name
+  with Not_found -> 
+    Stdpp.raise_with_loc loc 
+    (Invalid_argument ("find_view: " ^ name))
+
+let bind_target ?(force_string = false) loc target =
+  match target with
+      <:expr< ( $list:el$ ) >> ->
+		 let ids = List.map (fun _ -> new_target ()) el in
+		 let idl = List.map 
+			     (fun s -> <:expr< $lid:s$ >>)
+			     ids in
+		 let target = <:expr< ( $list:idl$ ) >> in
+		 let make_target e =
+		   List.fold_right2 
+		     (fun x id e ->
+			<:expr< let $lid:id$ = $x$ in $e$ >>)
+		     el
+		     ids
+		     e in
+		   
+		 (make_target, target)
+    | x ->
+	let id = new_target () in
+	let target = <:expr< $lid:id$ >> in
+	let make_target = 
+	  if force_string then 
+	    fun e -> <:expr< let $lid:id$ = ($x$ : string) in $e$ >>
+	  else 
+	    fun e -> <:expr< let $lid:id$ = $x$ in $e$ >> in
+	(make_target, target)
+		     
+
+
+let match_failure loc =
+  <:expr< match () with [] >>
+
+
+
+
+let keep patt = 
+  let subpatt = { sub_patt = patt;
+		  sub_names = Names.empty;
+		  sub_specials = [];
+		  sub_alternatives = [] } in
+  (Names.empty, false, `Normal, subpatt)
+
+let sum_kind kind1 kind2 =
+  if kind1 = `Special || kind2 = `Special then `Special
+  else `Normal
+
+let names_from_list names loc l get =
+  List.fold_right
+    (fun x (set, has_re, kind, spatts, subpatts, res) ->
+       let p = get x in
+       let (local_set, local_has_re, local_kind, subpatt) = names p in
+       check_different_ids loc local_set set;
+       (Names.union local_set set, 
+	(has_re || local_has_re),
+	sum_kind kind local_kind,
+	subpatt.sub_patt :: spatts, 
+	subpatt.sub_alternatives @ subpatts,
+	subpatt.sub_specials @ res))
+    l
+    (Names.empty, false, `Normal, [], [], [])
+    
+let rec names patt =
+  let loc = MLast.loc_of_patt patt in
+  match patt with
+    | <:patt< ( $p$ : $lid:s$ ) >> when s = forbidden_type -> 
+      recons_patt1 loc p (fun p -> p)
+
+    | <:patt< ( $p$ : $t$ ) >> -> 
+      recons_patt1 loc p (fun p -> <:patt< ( $p$ : $t$ ) >>)
+     
+    | <:patt< $lid:id$ >> ->
+
+      (match classify_id id with
+	   `Regexp -> 
+	     let re_name = regexp_of_var id in
+	     let re = find_compiled_regexp loc re_name in
+	     let set = get_all_names re in
+	     let subpatt = { sub_patt = patt;
+			     sub_names = set;
+			     sub_specials = [`Regexp re];
+			     sub_alternatives = [] } in
+	     (set, true, `Special, subpatt)
+	 | `View -> 
+	     let view_name = view_of_var id in
+	     let view = find_view loc view_name in
+	     let set =
+	       match view.view_arg with
+		   None -> Names.empty
+		 | Some p -> 
+		     let (set, _, _, _) = names p in
+		     set in
+	     let subpatt = { sub_patt = patt;
+			     sub_names = set;
+			     sub_specials = [`View view];
+			     sub_alternatives = [] } in
+	     (set, true, `Special, subpatt)
+	 | `Other ->
+	     let set = Names.singleton (loc, id) in
+	     let subpatt = { sub_patt = patt;
+			     sub_names = set;
+			     sub_specials = [];
+			     sub_alternatives = [] } in
+	     (set, false, `Normal, subpatt))
+      
+    | <:patt< $anti:e$ >> -> names e
+      
+    | <:patt< $p1$ . $p2$ >> -> (recons_patt2 loc p1 p2 
+				   (fun p1 p2 -> <:patt< $p1$ . $p2$ >>))
+    | <:patt< $p1$ .. $p2$ >> -> (recons_patt2 loc p1 p2 
+				   (fun p1 p2 -> <:patt< $p1$ .. $p2$ >>))
+    | <:patt< $p1$ $p2$ >> -> (recons_patt2 loc p1 p2 
+				   (fun p1 p2 -> <:patt< $p1$ $p2$ >>))
+    | <:patt< ( $p1$ as $p2$ ) >> -> (recons_patt2 loc p1 p2 
+					(fun p1 p2 -> 
+					   <:patt< ( $p1$ as $p2$ ) >>))
+
+
+    | <:patt< $p1$ | $p2$ >> -> 
+      let (set1, has_re1, kind1, subpatt1) = names p1 in
+      let (set2, has_re2, kind2, subpatt2) = names p2 in
+      check_same_ids loc set1 set2;
+      let subpatt =
+	if kind1 = `Special || kind2 = `Special then
+	  let var_name = new_subpatt () in
+	  let spatt = <:patt< $lid:var_name$ >> in
+	  { sub_patt = spatt;
+	    sub_names = set1;
+	    sub_specials = [];
+	    sub_alternatives = [ var_name, subpatt1; 
+				 var_name, subpatt2 ] }
+	else
+	  { sub_patt = <:patt< $subpatt1.sub_patt$ | $subpatt2.sub_patt$ >>;
+	    sub_names = subpatt1.sub_names;
+	    sub_specials = [];
+	    sub_alternatives = 
+	      subpatt1.sub_alternatives @ subpatt2.sub_alternatives } in
+      (set1, (has_re1 || has_re2), `Special, subpatt)
+	
+    | <:patt< { $list:ppl$ } >> -> 
+      let (set, has_re, kind, spatts, l, res) = 
+	names_from_list names loc ppl snd in
+      let fields = 
+	List.map2 (fun (p1, p2) spatt -> (p1, spatt)) ppl spatts in
+      let subpatt = 
+	{ sub_patt = <:patt< { $list:fields$ } >>;
+	  sub_names = set;
+	  sub_specials = res;
+	  sub_alternatives = l } in
+      (set, has_re, kind, subpatt)
+	
+    | <:patt< [| $list:pl$ |] >> -> 
+      let (set, has_re, kind, spatts, l, res) = 
+	names_from_list names loc pl (fun x -> x) in
+      let subpatt = 
+	{ sub_patt = <:patt< [| $list:spatts$ |] >>;
+	  sub_names = set;
+	  sub_specials = res;
+	  sub_alternatives = l } in
+      (set, has_re, kind, subpatt)
+
+    | <:patt< ( $list:pl$ ) >> -> 
+      let (set, has_re, kind, spatts, l, res) = 
+	names_from_list names loc pl (fun x -> x) in
+      let subpatt = 
+	{ sub_patt = <:patt< ( $list:spatts$ ) >>;
+	  sub_names = set;
+	  sub_specials = res;
+	  sub_alternatives = l } in
+      (set, has_re, kind, subpatt)
+
+      
+    | <:patt< $chr:_$ >>
+    | <:patt< $int:_$ >>
+    | <:patt< $str:_$ >>
+    | <:patt< $uid:_$ >>
+    | <:patt< $flo:_$ >>
+    | <:patt< _ >> -> keep patt
+
+    | MLast.PaNativeInt (_, _) 
+    | MLast.PaInt64 (_, _) 
+    | MLast.PaInt32 (_, _) -> keep patt
+
+    | MLast.PaVrn (_, _) 
+    | MLast.PaTyp (_, _) -> keep patt
+
+    | MLast.PaOlb _    (* optional label *)
+    | MLast.PaLab _ -> (* label *)
+	Messages.invalid_pattern loc
+
+and recons_patt1 loc p1 f =
+  let (set1, has_re1, kind1, 
+       { sub_patt = spatt1; 
+	 sub_specials = res1; 
+	 sub_alternatives = l1 }) = names p1 in
+  let spatt = f spatt1 in
+  let subpatt = { sub_patt = spatt;
+		  sub_names = set1;
+		  sub_specials = res1;
+		  sub_alternatives = l1 } in
+  (set1, has_re1, kind1, subpatt)
+
+and recons_patt2 loc p1 p2 f =
+  let (set1, has_re1, kind1, 
+       { sub_patt = spatt1; 
+	 sub_specials = res1; 
+	 sub_alternatives = l1 }) = names p1 in
+  let (set2, has_re2, kind2, 
+       { sub_patt = spatt2; 
+	 sub_specials = res2; 
+	 sub_alternatives = l2 }) = names p2 in
+  check_different_ids loc set1 set2;
+  let kind = sum_kind kind1 kind2 in
+  let spatt = f spatt1 spatt2 in
+  let set = Names.union set1 set2 in
+  let subpatt = { sub_patt = spatt;
+		  sub_names = set;
+		  sub_specials = res1 @ res2;
+		  sub_alternatives = l1 @ l2 } in
+  (set, (has_re1 || has_re2), kind, subpatt)
+
+
+let id_list set = 
+  List.sort (fun (_, a) (_, b) -> String.compare a b) (Names.elements set)
+
+let expr_id_list l =
+  List.map (fun (loc, s) -> <:expr< $lid:s$ >>) l
+
+let patt_id_list l =
+  List.map (fun (loc, s) -> <:patt< $lid:s$ >>) l
+
+let expr_is_lid = function
+    <:expr< $lid:_$ >> -> true
+  | _ -> false
+
+let patt_is_lid = function
+    <:patt< $lid:_$ >> -> true
+  | _ -> false
+
+
+let simplify_match loc target l default = 
+  (* target is an expr that should not compute anything *)
+  (* user-defined but unused expressions are kept for the type checker *)
+  (* default normally raises a match_failure or reraises an exception *)
+  match l with
+      [] -> default
+    | [(<:patt< _ >> , (None | Some <:expr< True >>), e)] -> e
+    | [(<:patt< $lid:id$ >>, (None | Some <:expr< True >>), e)]
+	when expr_is_lid target ->
+	<:expr< let $lid:id$ = $target$ in $e$ >>
+    | _ ->
+	let l' = l @ [<:patt< _ >>, None, default] in
+	<:expr< match $target$ with [ $list:l'$ ] >>
+
+let rec patt_succeeds patt = (* always?, catch_all? *)
+  match patt with
+      <:patt< _ >> -> (true, true)
+    | <:patt< $lid:_$ >> -> (true, false)
+    | <:patt< ( $list:l$ ) >> ->
+      List.fold_left
+      (fun (works_always, is_catch_all) p ->
+	 let always, catch_all = patt_succeeds p in
+	 (works_always && always, is_catch_all && catch_all))
+      (false, true)
+      l
+    | _ -> (false, false) (* actually we could test if it is catch_all *)
+
+let match_one_case loc target patt success failure =
+  let always_succeeds, is_catch_all = patt_succeeds patt in
+  if is_catch_all then (success, false)
+  else
+    if always_succeeds then
+      (<:expr< let $patt$ = $target$ in $success$ >>, false)
+    else
+      (<:expr< match $target$ with 
+	   [ $patt$ when True -> $success$
+	   | _ -> $failure$ ] >>,
+	   true)
+
+
+let make_get_re loc re_name re_args =
+  List.fold_left 
+    (fun e (_, arg) -> 
+       let loc = MLast.loc_of_expr arg in
+       <:expr< $e$ $arg$ >>)
+    <:expr< $lid:re_name$ >>
+    re_args
+
+
+(*
+let re_match re_list (expr, expr_may_fail) = 
+  let result =
+    List.fold_right
+      (fun { re_loc = loc;
+	     re_name = re_name;
+	     re_args = re_args;
+	     re_groups = named_groups } success ->
+	 let var_name = var_of_regexp re_name in
+	 let target = <:expr< $lid:var_name$ >> in
+	 let failure = raise_exit loc in
+	 let get_re = make_get_re loc re_name re_args in
+	 (!lib).match_and_bind 
+	   loc re_name get_re target named_groups success failure)
+      re_list
+      expr in
+  let may_fail = expr_may_fail || re_list <> [] in
+  (result, may_fail)
+*)
+
+let re_match re success =
+  let { re_loc = loc;
+	re_name = re_name;
+	re_args = re_args;
+	re_groups = named_groups } = re in
+  let var_name = var_of_regexp re_name in
+  let target = <:expr< $lid:var_name$ >> in
+  let failure = raise_exit loc in
+  let get_re = make_get_re loc re_name re_args in
+  (!lib).match_and_bind 
+    loc re_name get_re target named_groups success failure
+
+let view_match x success =
+  let { view_loc = loc;
+	view_unique_name = view_unique_name;
+	view_name = view_name;
+	view_name_loc = vloc;
+	view_path = view_path;
+	view_arg = arg } = x in
+  let view_fun = 
+    let loc = vloc in
+    let base =
+      <:expr< $lid:"view_" ^ view_name$ >> in
+    List.fold_right (fun s r -> <:expr< $uid:s$ . $r$ >>) view_path base in
+  let var_name = var_of_view view_unique_name in
+  let failure = raise_exit loc in
+  match arg with
+      None ->
+	(let target = 
+	   let loc = vloc in
+	   let alpha = new_type_var () in
+	   <:expr< ( $view_fun$ : '$alpha$ -> bool ) $lid:var_name$ >> in
+	 <:expr< if $target$ then $success$
+    	         else $failure$ >>)
+    | Some patt ->
+	let target = 
+	  let loc = vloc in
+	  let alpha = new_type_var () in
+	  let beta = new_type_var () in
+	  <:expr< ( $view_fun$ : '$alpha$ -> option '$beta$ ) 
+	              $lid:var_name$ >> in
+	let cases =
+	  [ (loc, <:patt< Some $patt$ >>, None, success);
+	    (loc, <:patt< _ >>, None, failure) ] in
+	!output_match_ref loc target cases
+	  
+
+let special_match specials (expr, expr_may_fail) =
+  let result =
+    List.fold_right
+      (fun special success ->
+	 match special with
+	     `Regexp re -> re_match re success
+	   | `View x -> view_match x success)
+      specials
+      expr in
+  let may_fail = expr_may_fail || specials <> [] in
+  (result, may_fail)
+
+
+let expand_subpatt loc l after_success =
+  match l with
+      [] ->
+	(* This case never raises Exit *)
+	(after_success, false)
+
+    | (_, { sub_names = set }) :: _ ->
+	let vars = id_list set in
+	let subresult = 
+	  match vars with
+	      [] -> <:expr< () >>
+	    | [loc,s] -> <:expr< $lid:s$ >>
+	    | _ -> <:expr< ( $list:expr_id_list vars$ ) >> in
+	let rec expand loc l =
+	  match l with
+	      [] -> subresult, false
+	    | _ ->
+		match
+		  List.fold_right
+		    (fun (var, subpatt) rest -> 
+		       let patt = subpatt.sub_patt in
+		       let l = subpatt.sub_alternatives in
+		       let re_list = subpatt.sub_specials in
+		       let (success, may_fail1) = 
+			 special_match re_list (expand loc l) in
+		       let failure = <:expr< raise $expr_exit loc$ >> in
+		       let target = <:expr< $lid:var$ >> in
+		       let (match_expr, may_fail2) = 
+			 match_one_case loc
+			   target patt success failure in
+		       
+		       let may_fail_here = may_fail1 || may_fail2 in
+
+		       match rest with
+			   None -> 
+			     (* succeed or raise Exit, which is a failure *)
+			     Some (match_expr, may_fail_here)
+
+			 | Some (real_rest, rest_may_fail) ->
+			     let may_fail = may_fail_here || rest_may_fail in
+			     (* catch Exit and try the next alternative *)
+			     if may_fail_here then 
+			       Some (<:expr<
+				     try $match_expr$
+				     with [ $patt_exit loc$ -> $real_rest$ ]
+				     >>, rest_may_fail)
+			     else (* can't fail, other tests are ignored *) 
+			       Some (match_expr, false))
+		    l
+		    None
+		with 
+		    None -> (subresult, false)
+		  | Some (e, may_fail) -> (e, may_fail) in
+
+	let result_expr, may_fail =
+	  match vars with
+	      [] -> 
+		let expanded_expr, may_fail = expand loc l in
+		<:expr< do { $expanded_expr$; $after_success$ } >>, may_fail
+            | _ ->
+		let p = 
+		  match vars with 
+		      [loc,s] -> <:patt< $lid:s$ >>
+		    | _ -> <:patt< ( $list:patt_id_list vars$ ) >> in
+		
+		let expanded_expr, may_fail = expand loc l in
+		<:expr< let $p$ = $expanded_expr$ in $after_success$ >>,
+		may_fail in
+
+        (* This whole expression raises Exit if the test fails *)
+        (result_expr, may_fail) (* was: true *)
+	
+
+let extract_re cases =
+  List.fold_right
+    (fun (loc, patt, w, e) (has_re1, accu) ->
+       let (all_names, has_re2, kind, subpatt) = names patt in
+       let more_cases = accu <> [] in
+       ((has_re1 || has_re2),
+	(loc, subpatt, w, e, has_re2, more_cases) ::
+	  accu))
+    cases
+    (false, [])
+
+
+
+let force_when patt when_opt =
+  let loc = MLast.loc_of_patt patt in
+  match when_opt with
+      None -> Some <:expr< True >>
+    | _ -> when_opt
+
+let output_special_match loc target_expr cases_with_re default_action =
+  let wrap_all = !(lib).wrap_match in
+  let wrap = !(lib).wrap_user_case in
+  let really_wrap = !(lib).really_wrap_user_case in
+  let (clo, app) =
+    if !tailrec then 
+      (fun e -> let loc = MLast.loc_of_expr e in <:expr< fun [ () -> $e$ ] >>),
+      (fun e -> let loc = MLast.loc_of_expr e in <:expr< $e$ () >>)
+    else
+      (fun e -> e),
+      (fun e -> e) in
+  
+  let (make_target, target) = bind_target loc target_expr in
+  let raise_exit = <:expr< raise $expr_exit loc$ >> in
+  let (cases_without_regexp, final_expr) = 
+    List.fold_right 
+      (fun (_, subpatt, when_opt, user_expr, has_re, more_cases) 
+	   (cases_without_regexp, match_next) ->
+	     let patt = subpatt.sub_patt in
+	     let subpatts = subpatt.sub_alternatives in
+	     match has_re, when_opt, subpatts with
+
+		 false, (None | Some <:expr< True >>), [] -> 
+
+		   (((patt, force_when patt when_opt, wrap (clo user_expr)) :: 
+			 cases_without_regexp), 
+		      match_next)
+
+	       | false, Some guard, [] when not really_wrap ->
+
+		   (((patt, force_when patt when_opt, clo user_expr) :: 
+			 cases_without_regexp), 
+		      match_next)
+
+	       | _ ->
+		   let e4, e4_may_fail =
+		     match when_opt with
+			 None -> clo user_expr, false
+		       | Some cond -> 
+			   <:expr<
+			   if $cond$ then $clo user_expr$ 
+			   else $raise_exit$ >>, true in
+		   let e3 = (wrap e4, e4_may_fail) in
+		   let (e2, may_fail1) =
+		     special_match subpatt.sub_specials e3 in
+		   let (e1, subpatt_may_fail) =
+		     expand_subpatt loc subpatts e2 in
+		   let success = e1 in
+		   let failure = raise_exit in
+		   let (this_match, may_fail2) =
+		     match_one_case loc target patt success failure in
+		   let rematch =
+		     simplify_match 
+		       loc target cases_without_regexp match_next in
+		   let e =
+		     if may_fail1 || may_fail2 || subpatt_may_fail 
+		     then <:expr< 
+		       try $this_match$
+		       with [ $patt_exit loc$ -> $rematch$ ] >>
+		     else this_match in
+		   ([], e))
+      cases_with_re
+      ([], (wrap (clo default_action))) in
+  
+  let full_expr =
+    simplify_match loc target cases_without_regexp final_expr in
+  make_target (app (wrap_all full_expr))
+
+let unloc l = List.map (fun (loc, a, b, c) -> (a, b, c)) l
+
+let output_match loc target_expr cases =
+  match extract_re cases with
+      false, _ -> (* change nothing *)
+	<:expr< match $target_expr$ with [ $list:unloc cases$ ] >>
+
+    | true, cases_with_re -> 
+	output_special_match loc target_expr cases_with_re (match_failure loc)
+	
+let _ = output_match_ref := output_match
+
+
+let output_try loc e cases =
+  match extract_re cases with
+      false, _ -> (* change nothing *)
+	<:expr< try $e$ with [ $list:unloc cases$ ] >>
+    | true, cases_with_re -> 
+	let exn = <:expr< $lid:any_exn$ >> in
+	let default_action = <:expr< raise $exn$ >> in
+	<:expr<
+	try $e$ 
+	with [ $lid:any_exn$ -> 
+	       $output_special_match loc exn cases_with_re default_action$ ] >>
+
+let output_function loc cases =
+  match extract_re cases with
+      false, _ -> (* change nothing *)
+	<:expr< fun [ $list:unloc cases$ ] >>
+    | true, cases_with_re -> 
+	let target = <:expr< $lid:any_target$ >> in
+	<:expr<
+	fun $lid:any_target$ ->
+	  $output_special_match loc 
+	  target cases_with_re (match_failure loc)$ >>
+
+
+let pp_named_groups loc (groups, positions) =
+  let l1 = Named_groups.list groups in
+  let l2 = Named_groups.list positions in
+  let l = l1 @ l2 in
+  List.fold_right
+    (fun (name, il) e -> 
+       let el = 
+	 List.fold_right
+	   (fun (loc, i, conv) e -> 
+	      <:expr< [ $int:string_of_int i$ :: $e$ ] >>) 
+	   il
+	   <:expr< [ ] >> in
+       <:expr< [ ( $str:String.escaped name$, $el$ ) :: $e$ ] >>)
+    l
+    <:expr< [ ] >>
+let find_named_regexp loc name =
+  try Hashtbl.find named_regexps name
+  with Not_found ->
+    Stdpp.raise_with_loc loc
+    (Failure ("Unbound regular expression " ^ name))
+
+
+let handle_regexp_patt loc re =
+  warnings re;
+  let (num, re_name) = new_regexp () in
+  let var_name = var_of_regexp re_name in
+  let (re_args, re_source, named_groups, postbindings) = 
+    (!lib).process_regexp loc ~sharing:false re re_name in
+  add_compiled_regexp ~anchored:true postbindings
+    loc re_name num re_args re_source named_groups;
+  <:patt< ( $lid:var_name$ : $lid: forbidden_type$ ) >>
+
+let handle_view_patt loc x =
+  let (num, unique_view_name) = new_view () in
+  let (name, arg) = x in
+  let var_name = var_of_view unique_view_name in
+  add_view loc unique_view_name num name arg;
+  <:patt< ( $lid:var_name$ : $lid: forbidden_type$ ) >>
+
+let handle_special_patt loc = function
+    `Regexp re -> handle_regexp_patt loc re
+  | `View x -> handle_view_patt loc x
+
+
+let gen_handle_let_bindings ?in_expr loc is_rec l =
+  let rec check_one_patt = function
+      <:patt< ( $lid:s$ : $lid: t$ ) >> as p
+	when is_reserved s || t = forbidden_type -> 
+			     Messages.misplaced_pattern p
+    | <:patt< ( $list:pl$ ) >> -> check_patts pl
+    | _ -> () 
+  and check_patts l = List.iter check_one_patt l in
+
+  match l with
+      [] -> 
+	(match in_expr with
+	     None -> `Str_item <:str_item< declare end >>
+	   | Some e -> `Expr e)
+
+    | [ (<:patt< ( $lid:s$ : $lid: t$ ) >> as p, e) ]
+	when not is_rec && (is_reserved s ||
+			    t = forbidden_type) ->
+	(match classify_id s with
+	     `View ->
+	       Stdpp.raise_with_loc (MLast.loc_of_patt p)
+	         (Failure "Views are not supported in this kind of pattern")
+	   | `Other -> assert false
+	   | `Regexp -> ());
+	let names = lazy (list_all_names 
+			    (find_compiled_regexp loc (regexp_of_var s))) in
+	let e2 = 
+	  match in_expr with
+	      None -> exprify loc (Lazy.force names)
+	    | Some e2 -> e2 in
+
+	let cases = [ (loc, p, None, e2) ] in
+	let expr = output_match loc e cases in
+	if in_expr = None then
+	  let p = pattify loc (Lazy.force names) in
+	  `Str_item <:str_item< value $p$ = $expr$ >>
+	else
+	  `Expr expr
+
+    | l ->
+	(* RE patterns in function arguments are not checked! *)
+	check_patts (List.map fst l);
+	match in_expr with
+	    None -> 
+	      `Str_item <:str_item< value $opt: is_rec$ $list:l$ >>
+	  | Some e2 -> 
+	      `Expr <:expr< let $opt: is_rec$ $list:l$ in $e2$ >>
+
+let handle_let_bindings loc is_rec l e2 =
+  match gen_handle_let_bindings ~in_expr:e2 loc is_rec l with
+      `Expr e -> e
+    | `Str_item _ -> assert false
+
+let handle_value_bindings loc is_rec l =
+  match gen_handle_let_bindings loc is_rec l with
+      `Expr _ -> assert false
+    | `Str_item x -> x
+
+
+let let_try_in loc o l e2 pwel =
+  let f = <:expr< fun () -> $e2$ >> in
+  let e = handle_let_bindings loc (o <> None) l f in
+  <:expr< (try $e$ 
+           with [ $list:pwel$ ]) () >>
+
+let get_re_source ~quote_expr ~nocasify accu =
+  let rec compact args strings pieces = function
+      `String s :: l -> 
+	compact args (if s <> "" then s :: strings else strings) pieces l
+    | `Var (e, nocase) :: l -> 
+	let loc = MLast.loc_of_expr e in
+	let name = Constants.new_var () in
+	let tail = 
+	  if strings = [] then pieces
+	  else `String (String.concat "" (List.rev strings)) :: pieces in
+	let gap_expr =
+	  let e' = <:expr< $lid:name$ >> in
+	  if nocase then nocasify e'
+	  else <:expr< $quote_expr$ $e'$ >> in
+	let new_args = (name, e) :: args in
+	compact new_args [] (`Expr gap_expr :: tail) l
+    | [] -> 
+	let final_pieces = 
+	  if strings = [] then pieces
+	  else
+	    let s = String.concat "" (List.rev strings) in
+	    if s <> "" then `String s :: pieces
+	    else pieces in
+	(List.rev args, List.rev final_pieces) in
+
+  compact [] [] [] (List.rev !accu)
+
+let compute_re_string loc re_source =
+  let get_expr = function
+      `String s -> <:expr< $str: String.escaped s$ >>
+    | `Expr e -> e in
+  match re_source with
+      [] -> <:expr< "" >>
+    | [x] -> get_expr x
+    | [first; second] -> 
+	<:expr< $get_expr first$ ^ $get_expr second$ >>
+    | _ ->
+	let l =
+	  List.fold_right 
+	    (fun x tail -> <:expr< [ $get_expr x$ :: $tail$ ] >>) 
+	    re_source
+	    <:expr< [] >> in
+	<:expr< String.concat "" $l$ >>
+
+
+let protect mt e =
+  if mt then
+    let loc = MLast.loc_of_expr e in
+    <:expr< do { Mutex.lock mutex; 
+		 try 
+		   let result = $e$ in
+	           do { Mutex.unlock mutex;
+			result }
+                 with exn ->
+                   do { Mutex.unlock mutex; 
+			raise exn } } >>
+  else e
+
+let get_re_fragments loc re_source =
+  match re_source with
+      [] -> <:expr< "" >>
+    | [`String s] -> <:expr< $str:String.escaped s$ >>
+    | _ -> 
+	List.fold_right
+	  (fun x e ->
+	     match x with
+		 `String s -> 
+		   <:expr< [ $str:String.escaped s$ :: $e$ ] >>
+	       | _ -> e)
+	  re_source <:expr< [] >>

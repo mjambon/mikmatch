@@ -1,0 +1,808 @@
+% -*- mode: latex -*-
+\documentclass[a4paper,12pt]{article}
+
+\usepackage{ae}
+\usepackage{hyperref}
+\usepackage{hevea}
+
+\usepackage{alltt}
+
+\usepackage[latin1]{inputenc} 
+\usepackage[T1]{fontenc}
+\usepackage{fullpage} 
+\usepackage{url} 
+\usepackage{ocamldoc}
+
+\title{Micmatch Version~## Sys.command "../VERSION" ##\\
+Reference Manual}
+\author{Martin Jambon}
+\date{October 19, 2005}
+
+\setcounter{secnumdepth}{5}
+\setcounter{tocdepth}{4}
+
+\begin{document}
+
+\maketitle
+
+This manual is available online as a single HTML file at\\
+\url{http://martin.jambon.free.fr/micmatch-manual.html}\\
+and as a PDF document at\\
+\url{http://martin.jambon.free.fr/micmatch-manual.pdf}.\\
+The home page of Micmatch is:\\
+\url{http://martin.jambon.free.fr/micmatch.html}
+
+\tableofcontents
+
+\section{Introduction}
+
+Micmatch is an extension of the syntax of the Objective Caml
+programming language (OCaml).
+Its purpose it to make the use of regular expressions easier and more
+generally to provide a set of tools for using OCaml as a
+powerful scripting language.
+Micmatch believes that regular expressions are just like any other
+program and deserve better than a cryptic sequence of symbols placed
+in a string of a master program.
+
+Micmatch currently supports two different libraries that implement
+regular expressions: Str which comes with the original distribution of
+OCaml and PCRE-OCaml which is an interface to PCRE (Perl Compatible
+Regular Expressions) for OCaml.
+These two flavors will be referred as Micmatch\_str and
+Micmatch\_pcre.
+They share a large number of syntaxic features, 
+but Micmatch\_pcre provides several macros that cannot be implemented
+safely in Micmatch\_str. Therefore, it is recommended to use
+Micmatch\_pcre.
+
+
+\section{Language}
+
+
+\subsection{Regular expressions}
+
+\subsubsection{Grammar of the regular expressions}
+
+Regular expressions support the syntax of Ocamllex regular
+expressions as of version 3.08.1 of the Objective Caml system
+(\url{http://caml.inria.fr/ocaml/htmlman/}), and 
+several additional features.
+A regular expression (\textit{regexp}) is defined by the grammar that
+follows. The associativity rules are given by priority levels. 0 is the
+strongest priority.
+\begin{itemize}
+\item \underline{\textit{char-literal}} 
+Match the given character (priority 0).
+
+\item \underline{\textbf{\_}} (underscore) 
+Match any character (priority 0).
+
+\item \underline{\textit{string-literal}} 
+Match the given sequence of characters (priority 0).
+
+\item \underline{\textbf{$[$}\textit{set-of-characters}\textbf{$]$}}
+Match one of the characters given by \textit{set-of-characters}
+(priority 0).
+The grammar for \textit{set-of-characters} is the following:
+\begin{itemize}
+\item \underline{\textit{char-literal}\textbf{$-$}\textit{char-literal}}
+defines a range of characters according to the iso-8859-1 encoding
+(includes ASCII).
+\item \underline{\textit{char-literal}}
+defines a singleton (a set containing just this character).
+\item \underline{\textit{string-literal}}
+defines a set that contains all the characters present in the given string.
+\item \underline{\textit{lowercase-identifier}}
+is replaced by the corresponding predefined regular expression; this
+regular expression must be exactly of length 1 and therefore
+represents a set of characters.
+\item \underline{\textit{set-of-characters} \textit{set-of-characters}}
+defines the union of two sets of characters.
+\end{itemize}
+
+\item \underline{\textit{regexp} \textbf{\#} \textit{regexp}}
+Match any of the characters given by the first regular expression
+except those which are given by the second one. Both regular
+expressions must be of length 1 and thus stand for a set of characters
+(priority 0).
+
+\item \underline{\textbf{$[$\^{}}\textit{set-of-characters}\textbf{$]$}}
+Same as \textbf{\_ \#}
+\textbf{$[$}\textit{set-of-characters}\textbf{$]$}
+(priority 0).
+
+
+\item \underline{\textit{regexp} \textbf{*}}
+Match the pattern given by \textit{regexp} 0 time or more (priority 0).
+
+\item \underline{\textit{regexp} \textbf{+}}
+Match the pattern given by \textit{regexp} 1 time or more (priority 0).
+
+\item \underline{\textit{regexp}\textbf{\{}\textit{m\textbf{$-$}n}\textbf{\}}}
+Match \textit{regexp} at least \textit{m}~times and up to
+\textit{n}~times. \textit{m} and~\textit{n} must be integer
+literals (priority 0).
+
+\item \underline{\textit{regexp}\textbf{\{}\textit{n}\textbf{\}}}
+Same as \textit{regexp}\textbf{\{}\textit{n\textbf{$-$}n}\textbf{\}}
+(priority 0).
+
+\item \underline{\textit{regexp}\textbf{\{}\textit{n}\textbf{$+$\}}}
+Same as 
+\textit{regexp}\textbf{\{}\textit{n}\textbf{\}}\textit{regexp}\textbf{$*$}
+(priority 0).
+
+\item \underline{\textit{regexp}\textbf{\{}\textit{n}\textbf{$-$\}}}
+Deprecated. Same as \textit{regexp}\textbf{\{}\textit{n}\textbf{$+$\}}
+(priority 0).
+
+\item \underline{\textbf{(} \textit{regexp} \textbf{)}}
+Match \textit{regexp} (priority 0).
+
+\item \underline{\textit{regexp} \textbf{\~{}}}
+Case insensitive match of the given
+regular expression \textit{regexp} according to the conventions of
+Objective Caml, i.e. according to the representation of characters
+in the iso-8859-1 standard (latin1) (priority 0).
+
+\item \underline{\textit{regexp} \textit{regexp}}
+Match the first regular expressions and then the second one (priority 1).
+
+\item \underline{\textit{regexp} \textbf{|} \textit{regexp}}
+Match one of these two regular expressions (priority 2).
+
+\item \underline{\textit{regexp} \textbf{as} \textit{lowercase-identifier}}
+Give a name to the substring that will be matched by the given pattern.
+This string becomes available under this name (priority 3).
+In-place conversions of the matched substring can be performed using
+one these three mechanisms:
+\begin{itemize}
+\item \underline{\textit{regexp} \textbf{as}
+\textit{lowercase-identifier} \textbf{:} \textit{built-in-converter}}
+where \textit{built-in-converter} is one of \texttt{int},
+\texttt{float} or \texttt{option}. \texttt{int} behaves as 
+\texttt{int\_of\_string}, \texttt{float} behaves as 
+\texttt{float\_of\_string}, and \texttt{option} encapsulate the
+substring in an object of type \texttt{string option} using
+an equivalent of \texttt{function "" -> None | s -> Some s}
+
+\item \underline{\textit{regexp} \textbf{as}
+\textit{lowercase-identifier} \textbf{:=} \textit{converter}}
+where \textit{converter} is any function which converts a string
+into something else.
+
+\item \underline{\textit{regexp} \textbf{as}
+\textit{lowercase-identifier} \textbf{=} \textit{expr}}
+where \textit{expr} is any OCaml expression, usually a constant, which
+assigns a value to \textit{lowercase-identifier} without knowing
+which substring it matches.
+\end{itemize}
+
+\item \underline{\textbf{\%} \textit{lowercase-identifier}}
+Give a name to the position in the string 
+that is being matched.
+This position becomes available as an int under this name.
+
+\item \underline{\textbf{@} \textit{expr}}
+Match the string given by \textit{expr}. \textit{expr} can be any
+OCaml expression of type string. Parentheses will be needed around 
+\textit{expr} if it is a function application, or any construct of
+equivalent or lower precedence (see the Objective Caml manual, chapter
+``The Objective Caml language'', section ``Expressions'').
+
+
+\end{itemize}
+
+
+\subsubsection{Named regular expressions}
+
+Naming regular expressions is possible using the following toplevel
+construct:\\
+\underline{\textbf{RE} \textit{ident} \textbf{=} \textit{regexp}}\\
+where \textit{ident} is a lowercase identifier.
+Regular expressions share their own namespace.
+
+For instance, we can define a phone number as a sequence of 3~digits
+followed by a dash and followed by 4~digits:
+\begin{verbatim}
+RE digit = ['0'-'9']
+RE phone = digit{3} '-' digit{4}
+\end{verbatim}
+
+
+\subsubsection{Predefined sets of characters}
+
+The POSIX character classes (sets of characters) are available as
+predefined regular expressions of length 1.
+Their definition is given in table~\ref{posix-classes}.
+\begin{table}
+\caption{\label{posix-classes}
+POSIX character classes and their
+definition in the Micmatch syntax}
+\tt
+\begin{tabular}{l}
+RE lower = \verb!['a'-'z']!\\
+RE upper = \verb!['A'-'Z']!\\
+RE alpha = lower | upper\\
+RE digit = \verb!['0'-'9']!\\
+RE alnum = alpha | digit\\
+RE punct = \verb=["!\"#$%&'()*+,-./:;<=\verb!=>?@[\\]^_`{|}~"]! \\ %$
+RE graph = alnum | punct\\
+RE print = graph | ' '\\
+RE blank = \verb!' ' | '\t'!\\
+RE cntrl = \verb!['\x00'-'\x1F' '\x7F']!\\
+RE xdigit = \verb![digit 'a'-'f' 'A'-'F']!\\
+RE space = \verb![blank "\n\x0B\x0C\r"]!\\
+\end{tabular}
+\end{table}
+
+\subsubsection{More predefined patterns}
+
+Some named regexps are predefined and available in
+every implementation of Micmatch. These are the following:
+\begin{itemize}
+\item \texttt{int}: matches an integer (see
+table~\ref{predefined-regexps}).
+It accepts a superset of the integer literals that are
+produced with the OCaml standard function \texttt{string\_of\_int}.
+\item \texttt{float}: matches a floating-point number 
+(see table~\ref{predefined-regexps}).
+It accepts a superset of the float literals that are
+produced with the OCaml standard function \texttt{string\_of\_float}.
+\end{itemize}
+
+\begin{table}
+\caption{\label{predefined-regexps}
+Predefined regexps in Micmatch}
+\tt
+\begin{verbatim}
+RE int = ["-+"]? ( "0" ( ["xX"] xdigit+
+                       | ["oO"] ['0'-'7']+
+                       | ["bB"] ["01"]+ )
+                 | digit+ )
+
+RE float = 
+  ["-+"]? 
+     ( ( digit+ ("." digit* )? | "." digit+ ) (["eE"] ["+-"]? digit+ )?
+       | "nan"~ 
+       | "inf"~ )
+\end{verbatim}
+\end{table}
+
+
+\subsection{General pattern matching}
+
+\subsubsection{Regexps and match/function/try constructs}
+
+In Micmatch, regular expressions can be used to match strings instead
+of the regular patterns. In this case, the regular expression must
+be preceded by the \textbf{RE} keyword, or placed between slashes
+(\textbf{/}\dots\textbf{/}). Both notations are equivalent.
+
+Only the following constructs support patterns that contain regular
+expressions:
+\begin{itemize}
+\item 
+\textbf{match} \dots\ \textbf{with} \textit{pattern} \textbf{->} \dots
+\item \textbf{function} \textit{pattern} \textbf{->} \dots
+\item \textbf{try} \dots\ \textbf{with} \textit{pattern} \textbf{->} \dots
+\end{itemize}
+
+Examples:
+\begin{verbatim}
+let is_num = function RE ['0'-'9']+ -> true | _ -> false
+
+let get_option () =
+  match Sys.argv with
+      [| _ |] -> None 
+    | [| _; RE (['a'-'z']+ as key) "=" (_* as data) |] -> Some (key, data)
+    | _ -> failwith "Usage: myprog [key=value]"
+
+let option =
+  try get_option ()
+  with Failure RE "usage"~ -> None
+\end{verbatim}
+
+If alternatives are used in a pattern, then both alternatives must
+define the same set of identifiers.
+In the following example, the string \texttt{code} can either come
+from the normal pattern matching or be a fresh substring which was
+extracted using the regular expression:
+\begin{verbatim}
+match option, s with
+    Some code, _
+  | None, RE _* "=" (['A'-'Z']['0'-'9'] as code) -> print_endline code
+
+  | _ -> ()
+\end{verbatim}
+
+In the general case, it is not possible to check in advance if the
+pattern-matching cases are complete if at least one of the patterns
+is a regular expression. In this case, no warnings against missing
+cases are displayed, thus it is safer to either add a catch-all case
+like in the previous examples or to catch the \texttt{Match\_failure}
+exception that can be raised unexpectedly.
+
+\subsubsection{Views (experimental feature)}
+
+Views are a general form of symbolic patterns other than those
+authorized by the concrete structure of data. For example, \texttt{Positive}
+could be a view for positive ints. View patterns can also bind
+variables and a useful example in OCaml is pattern-matching over lazy
+values.
+
+Here we propose simple views, as suggested by Simon Peyton Jones 
+for Haskell:\\
+\url{http://hackage.haskell.org/trac/ghc/wiki/ViewPatterns}.
+We propose a different syntax, but note that the syntax that we 
+have chosen here is
+experimental and may change slightly in future releases.
+
+\paragraph{View patterns}
+
+A view pattern has one of these two forms:
+\begin{enumerate}
+\item \underline{\textbf{\%} \textit{view-name}}: a view without an
+  argument. It is a simple check over the subject data.
+\item \underline{\textbf{\%} \textit{view-name}
+  \textit{pattern}}: a view with an argument, the pattern. 
+  If the view function matches successfully, its
+  result is matched against the given pattern.
+\end{enumerate}
+where a \textit{view-name} is a capitalized alphanumeric identifier,
+possibly preceded by a module path specification, 
+e.g. \texttt{Name} or \texttt{Module.Name}.
+
+\paragraph{Definition of a view}
+
+Views without arguments are defined as functions of type 
+\texttt{'a -> bool}, while views with arguments are defined as
+functions of type \texttt{'a -> 'b option}.
+
+The syntax for defining a view is:
+\begin{itemize}
+\item \underline{\textbf{let} \textbf{view} \textit{uppercase-identifier}
+  \textbf{=} \textit{expression}}
+\item \underline{\textbf{let} \textbf{view} \textit{uppercase-identifier}
+  \textbf{=} \textit{expression} \textbf{in} \textit{expression}}
+\end{itemize}
+
+Using the syntax above is however not strictly needed, since it just
+defines a function named after the name of the view, and prefixed by 
+\texttt{view\_}. For instance \texttt{let view X = f} can be written
+as \texttt{let view\_X = f} in regular OCaml. Therefore, some library
+modules can export view definitions without using any syntax
+extension themselves.
+
+
+\paragraph{Example}
+
+\begin{verbatim}
+(* The type of lazy lists *)
+type 'a lazy_list = Nil | Cons of ('a * 'a lazy_list lazy_t)
+
+(* Definition of a view without argument for the empty list *)
+let view Nil = 
+    fun l ->
+      try Lazy.force l = Nil
+      with _ -> false
+
+(* Independent definition of a view with an argument, 
+   the head and tail of the list *)
+let view Cons = 
+    fun l -> 
+      try
+        match Lazy.force l with 
+            Cons x -> Some x 
+          | Nil -> None
+      with _ -> None
+
+
+(* Test *)
+let _ =
+  let l = lazy (Cons (1, lazy (Cons (2, lazy Nil)))) in
+  match l with
+      %Nil
+    | %Cons (_, %Nil) -> assert false
+    | %Cons (x1, %Cons (x2, %Nil)) ->
+        assert (x1 = 1);
+        assert (x2 = 2);
+        Printf.printf "Passed view test\n%!"
+    | _ -> assert false
+\end{verbatim}
+
+\paragraph{Limitations}
+
+Each time a value is tested against a view pattern, the corresponding
+function is called. There is no optimization that would avoid calling
+the view function twice on the same argument.
+
+Redundant or missing cases cannot be checked, just like when there is
+a regexp in a pattern. This is due both to our definition of views and
+to the implementation that we get using Camlp4.
+
+
+\subsection{Shortcut for one-case regexp matching}
+
+A shortcut notation can be used to extract substrings from a string
+that match a pattern which is known in advance:\\
+\textbf{let /}\textit{regexp}\textbf{/} \textbf{=} \textit{expr}
+\textbf{in} \textit{expr}
+
+Global declarations also support this shortcut:\\
+\textbf{let /}\textit{regexp}\textbf{/} \textbf{=} \textit{expr}\\
+Example:
+\begin{verbatim}
+# Sys.ocaml_version;;
+- : string = "3.08.3"
+# RE int = digit+;;
+# let /(int as major : int) "." (int as minor : int) 
+       ("." (int as patchlevel) | ("" as patchlevel))
+       ("+" (_* as additional_info) | ("" as additional_info))/ = 
+    Sys.ocaml_version
+;;
+val additional_info : string = ""
+val major : int = 3
+val minor : int = 8
+val patchlevel : string = "3"
+\end{verbatim}
+
+The notation does not allow simultaneous definitions using the
+\textbf{and} keyword nor recursive definitions using \textbf{rec}.
+
+As usual, the \texttt{Match\_failure} exception is raised if the
+string fails to match the pattern.
+The let-try-in-with construct described in the next section also
+supports regexp patterns, with the same restrictions.
+
+
+\subsection{The let-try-in-with construct}
+
+A general notation for catching exceptions that are raised during
+the definition of bindings is provided:\\
+\textbf{let} \textbf{try} [\textbf{rec}] \textit{let-binding} 
+\{\textbf{and} \textit{let-binding}\} \textbf{in}\\
+\verb!  !\textit{expr}\\
+\textbf{with} \textit{pattern-matching}
+
+It has the same meaning as:\\
+\textbf{try} \textbf{let} [\textbf{rec}] \textit{let-binding} 
+\{\textbf{and} \textit{let-binding}\} \textbf{in}\\
+\verb!  !\textit{expr}\\
+\textbf{with} \textit{pattern-matching}\\
+except that in the former case only the exceptions raised by the
+\textit{let-binding}s are handled by the exception handler introduced
+by \textbf{with}.
+
+
+\subsection{Implementation-dependent features}
+
+These features depend on which library is actually used internally for
+manipulating regular expressions.
+Currently two libraries are supported: the Str library from the
+official OCaml distribution and the PCRE-OCaml library.
+Support for other libraries might be added in the future.
+
+\subsubsection{Backreferences}
+\label{backref}
+Previously matched substrings can be matched again using
+backreferences.
+\underline{\textbf{!}\textit{ident}}
+is a backreference to the named group \textit{ident} that is defined 
+previously in the sequence.
+During the matching process, it is not possible that a backreference
+refers to a named group which is not matched.
+In the following example, we 
+extract the repeated pattern \texttt{abc} from \texttt{abcabc}:
+\begin{verbatim}
+# match "abcabc" with RE _* as x !x -> x;;
+- : string = "abc"
+\end{verbatim}
+
+
+\subsubsection{Specificities of Micmatch\_str}
+
+Backreferences as described previously (section~\ref{backref}) are
+supported.
+
+In addition to the POSIX character classes, 
+a set of predefined patterns is available:
+\begin{itemize}
+\item \underline{bol} matches at beginning of line (either at the
+beginning of the matched string, or just after a newline character).
+\item \underline{eol} matches at end of line (either at the end of the matched
+string, or just before a newline character).
+\item \underline{any} matches any character except newline.
+\item \underline{bnd} matches word boundaries.
+\end{itemize}
+
+\subsubsection{Specificities of Micmatch\_pcre}
+
+This is currently the version which is used by the 
+\verb$micmatch$ command.
+
+\paragraph{Matching order}
+
+Alternatives (\textit{regexp1}|\textit{regexp2})
+are tried from left to right.
+
+The quantifiers (\verb$*$, \verb$+$, \verb$?$ and
+\verb${$\dots\verb$}$)
+are greedy except if specified otherwise (see next paragraph).
+The regular expressions are matched from left to right, and the
+repeated patterns are matched as many times as possible before trying
+to match the rest of the regular expression and either succeed or give
+up one repetition before retrying (backtracking).
+
+\paragraph{Greediness and laziness}
+Normally, quantifiers (\verb$*$, \verb$+$, \verb$?$ and
+\verb${$\dots\verb$}$) are greedy, i.e. they perform the longest match
+in terms of number of repetitions
+before matching the rest of the regular expression or
+backtracking. The opposite behavior is laziness: in that case,
+the number of repetitions is made minimal before trying to match the
+rest of the regular expression and either succeed or continue with one
+more repetition.
+
+The lazy behavior is turned on by placing the keyword \verb$Lazy$ 
+after the quantifier. This is the equivalent of Perl's quantifiers
+\verb$*?$, \verb$+?$, \verb$??$ and \verb${$\dots\verb$}?$.
+For instance, compare the following behaviors:
+\begin{verbatim}
+# match "<hello><world>" with RE "<" (_* as contents) ">" -> contents;;
+- : string = "hello><world"
+# match "<hello><world>" with RE "<" (_* Lazy as contents) ">" -> contents;;
+- : string = "hello"
+\end{verbatim}
+
+\paragraph{Possessiveness or atomic grouping}
+Sometimes it can be useful to prevent backtracking.
+This is achieved by placing the \verb$Possessive$ keyword after a given group.
+For instance, compare the following:
+\begin{verbatim}
+# match "abc" with RE _* _ -> true | _ -> false;;  
+- : bool = true
+# match "abc" with RE _* Possessive _ -> true | _ -> false;;
+- : bool = false
+\end{verbatim}
+This operator has the strongest associativity priority (0), just like
+the quantifiers.
+
+\paragraph{Backreferences}
+Backreferences are supported as described in section~\ref{backref}.
+
+\paragraph{Predefined patterns}
+The following predefined patterns are available in addition to the
+POSIX character classes:
+\begin{itemize}
+\item \underline{bos} matches at beginning of the matched string.
+\item \underline{eos} matches at the end of the matched string.
+\item \underline{bol} matches at beginning of line (either at the
+beginning of the matched string, or just after a newline character).
+\item \underline{eol} matches at end of line (either at the end of the matched
+string, or just before a newline character).
+\item \underline{any} matches any character except newline.
+\end{itemize}
+
+
+\paragraph{Lookaround assertions}
+
+A lookaround assertion is a pattern that
+has to be matched but doesn't consume characters in the string being
+matched.
+
+Lookahead assertions are checked after the current position in the
+string, and lookbehind assertions are matched before the current
+point. The general syntax for an assertion is the following:
+\\
+\fbox{\texttt{<} \textit{lookbehind} 
+\texttt{.} \textit{lookahead} \texttt{>}}\\
+\fbox{\texttt{<} \textit{lookahead} \texttt{>}}\\
+The central dot symbolizes the current position. The
+\textit{lookbehind} assertion is a test over the characters at the
+left of the current point, while the \textit{lookahead} is a test over
+the characters at the right of the current point in the string.
+
+\textit{lookbehind} or \textit{lookahead} are either empty or a
+regular expression, optionally preceded by \texttt{Not}.
+An assertion starting with \texttt{Not} is called negative and means
+that the given regular expression can not match here.
+
+There are no restrictions on the contents of lookahead regular
+expressions. Lookbehind regular expressions are restricted
+to those that match substrings of length that can be predetermined.
+Besides this, backreferences are not supported in lookbehind expressions.
+
+
+
+\paragraph{Macros}
+This implementation provides a set of macros that follow this
+syntax:\\
+\fbox{\textit{MACRO-NAME} \textit{regexp} \texttt{->} \textit{expr}}\\
+where \textit{expr} is the expression that will be computed every time
+the pattern given by \textit{regexp} is matched.
+
+Only the \verb$SPLIT$ and \verb$FILTER$ macros follows a simplified syntax:\\
+\fbox{\textit{MACRO-NAME} \textit{regexp}}
+
+These constructs build a function which accepts some optional
+arguments and the string to match.
+For instance, \\
+\verb$(REPLACE "," -> ";") "a,b,c"$\\
+returns \verb$"a;b;c"$
+whereas\\
+\verb$(REPLACE "," -> ";") ~pos:2 "a,b,c"$\\
+returns \verb$"a,b;c"$
+
+The possible options are the following:
+\begin{itemize}
+\item \verb$pos$ has type \verb$int$ and indicates that matching or
+searching must start from this position in the string.
+Its default value is always 0 (beginning of the string).
+\item \verb$full$ is a boolean that defines whether split operations
+must ignore empty fragments before the first matched pattern or the
+last matched pattern in the string. The default value is \verb$true$
+for \verb$MAP$ and \verb$false$ for \verb$SPLIT$.
+\item \verb$share$ is a potentially unsafe option which allows the
+reuse of some mutable data which are associated to a given regular
+expression. This may make the program slightly faster, but should 
+generally not be used in multi-threaded programs or in libraries.
+\end{itemize}
+
+\fbox{\texttt{MATCH} \textit{regexp} \texttt{->} \textit{expr}}\\
+tries to match the pattern \textit{regexp} at the beginning of the
+string or at the given position \verb$pos$ and returns \textit{expr}
+or raise \verb$Not_found$. Options: \verb$pos$ (0), \verb$share$ (false).
+When \verb$pos$ and \verb$share$ are not specified, it is equivalent to:
+\begin{alltt}
+function 
+    RE \textit{regexp} -> \textit{expr}
+  | _ -> raise Not_found
+\end{alltt}
+
+\fbox{\texttt{REPLACE} \textit{regexp} \texttt{->} \textit{expr}}\\
+returns a string in which every occurrence of the pattern is
+replaced by \textit{expr}. Options: \verb$pos$ (0).
+
+\fbox{\texttt{REPLACE\_FIRST} \textit{regexp} \texttt{->} \textit{expr}}\\
+returns a string in which the first occurrence of the pattern is
+replaced by \textit{expr}. A copy of the input string is returned if
+the pattern is not found.
+Options: \verb$pos$ (0).
+
+\fbox{\texttt{SEARCH} \textit{regexp} \texttt{->} \textit{expr}}\\
+simply evaluates \textit{expr} every time the pattern is
+matched. Options: \verb$pos$ (0).
+
+\fbox{\texttt{SEARCH\_FIRST} \textit{regexp} \texttt{->} \textit{expr}}\\
+simply evaluates \textit{expr} the first time the pattern is
+matched and returns the result. Exception \texttt{Not\_Found} is
+raised if the pattern is not matched.
+Options: \verb$pos$ (0), \verb$share$ (false).
+
+\fbox{\texttt{COLLECT} \textit{regexp} \texttt{->} \textit{expr}}\\
+evaluates \textit{expr} every time the pattern is
+matched and puts the result into a list. Options: \verb$pos$ (0).
+
+\fbox{\texttt{COLLECTOBJ} \textit{regexp}}\\
+like \texttt{COLLECT}, but the elements of the returned list are automatically objects
+with methods that correspond to the subgroups captured with
+\texttt{as}.
+Options: \verb$pos$ (0).
+
+\fbox{\texttt{SPLIT} \textit{regexp}}\\
+splits the given string using \textit{regexp} as a delimiter.
+Options: \verb$pos$ (0), \verb$full$ (false).
+
+\fbox{\texttt{FILTER} \textit{regexp}}\\
+creates a predicate that returns true is the given string matches 
+\textit{regexp} or false otherwise.
+Options: \verb$pos$ (0), \verb$share$ (false).
+
+\fbox{\texttt{CAPTURE} \textit{regexp}}\\
+returns \texttt{Some o} where \texttt{o} is an object with methods
+that correspond to the captured subgroups, or 
+\texttt{None} if the subject string doesn't match \textit{regexp}.
+Options: \verb$pos$ (0), \verb$share$ (false).
+
+\fbox{\texttt{MAP} \textit{regexp} \texttt{->} \textit{expr}}\\
+splits the given string into fragments: the fragments that do not match the
+pattern are returned as \texttt{`Text s} where s is a
+string. Fragments that match the pattern are replaced by
+the result of \textit{expr}, which has to be a polymorphic variant.
+Options: \verb$pos$ (0), \verb$full$ (true).
+For instance, \\
+\verb$(MAP ',' -> `Sep) "a,b,c,"$\\
+ returns the list\\
+\verb$[`Text "a"; `Sep; `Text "b"; `Sep; `Text "c"; `Sep; `Text ""]$\\
+whereas \\
+\verb$(MAP ',' -> `Sep) ~full:false "a,b,c,"$\\
+returns only\\
+ \verb$[`Text "a"; `Sep; `Text "b"; `Sep; `Text "c"; `Sep]$
+
+
+\section{Tools}
+
+
+\subsection{The toplevel}
+
+\subsubsection{Micmatch\_str}
+The \texttt{micmatch\_str} command can be used as a replacement for
+\texttt{ocaml} either as an interactive toplevel or for executing
+scripts.
+Any library which is required by Micmatch\_str is automatically loaded.
+
+\subsubsection{Micmatch\_pcre}
+The \texttt{micmatch} command can be used as a replacement for
+\texttt{ocaml} either as an interactive toplevel or for executing
+scripts.
+Any library which is required by Micmatch\_pcre is automatically loaded.
+
+
+\subsection{The libraries for the preprocessor}
+
+\subsubsection{Micmatch\_str}
+The preprocessing library \texttt{pa\_micmatch\_str.cma} must be loaded by
+the preprocessor (\texttt{camlp4o} or \texttt{camlp4r}).
+
+It is safe to use Micmatch\_str in
+multithreaded programs only if the Str library is not being used by
+one thread when
+some other threads are using Micmatch.
+When compiling multithreaded programs, the \texttt{-thread} option
+must be passed to the preprocessor.
+
+
+\subsubsection{Micmatch\_pcre}
+The preprocessing library \texttt{pa\_micmatch\_pcre.cma} must be loaded by
+the preprocessor (\texttt{camlp4o} or \texttt{camlp4r}).
+When compiling multithreaded programs, the \texttt{-thread} option
+must be passed to the preprocessor (versions earlier than
+0.693 do not require the \texttt{-thread} flag and do not accept
+it anyway. It is strictly required only for regexps with gaps (@expr) which
+did not exist before).
+
+
+
+\subsection{The runtime libraries}
+
+Both variants depend on portable features of the Unix library.
+The executables must therefore be linked against \texttt{unix.cma}
+(bytecode) or \texttt{unix.cmxa} (native code) in addition to
+the specific libraries mentioned below.
+
+\subsubsection{Micmatch\_str}
+
+In addition to the backend for the regular expressions engine
+(\texttt{str.cma} for bytecode or \texttt{str.cmxa} for native code), 
+the OCaml code which is produced by the preprocessor needs to be
+linked against either \texttt{run\_micmatch\_str.cma} (bytecode),
+\texttt{run\_micmatch\_str.cmxa} (native code), 
+\texttt{run\_micmatch\_str\_mt.cma} (bytecode, threads)
+or \texttt{run\_micmatch\_str\_mt.cmxa} (native code, threads).
+
+
+\subsubsection{Micmatch\_pcre}
+
+In addition to the backend for the regular expressions engine
+(\texttt{pcre.cma} for bytecode or \texttt{pcre.cmxa} for native code), 
+the OCaml code which is produced by the preprocessor needs to be
+linked against either \texttt{run\_micmatch\_pcre.cma} (bytecode),
+\texttt{run\_micmatch\_pcre.cmxa} (native code).
+Multithreaded programs are supported as well
+and do not require a specific library.
+
+\begin{latexonly}
+\input{mmodoc.tex}
+\end{latexonly}
+
+\begin{htmlonly}
+\section{A small text-oriented library}
+\begin{rawhtml}
+<a href="mmodoc/index.html">Module Micmatch</a>
+\end{rawhtml}
+\end{htmlonly}
+
+
+\end{document}
