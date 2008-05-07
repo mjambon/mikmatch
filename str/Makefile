@@ -16,9 +16,11 @@ OCAMLLDFLAGS = \
   regexp_ast.cmo \
   select_lib.cmo
 
-INCDIRS = ../micmatch_common
+INCDIRS = ../common
 
 USE_CAMLP4 = yes
+OCAMLFLAGS = -dtypes
+
 LIBINSTALL_FILES := \
   pa_micmatch_str.cma pa_micmatch_str.cmo pa_micmatch_str.cmi \
   run_micmatch_str.cma run_micmatch_str.cmo run_micmatch_str.cmi \
@@ -38,9 +40,9 @@ all:
 
 links: match.ml syntax_common.ml
 
-syntax_common.ml: ../micmatch_common/syntax_common.ml
+syntax_common.ml: ../common/syntax_common.ml
 	ln -s $< $@
-match.ml: ../micmatch_common/match.ml
+match.ml: ../common/match.ml
 	ln -s $< $@
 
 .PHONY: pa_lib install uninstall version topinstall misc

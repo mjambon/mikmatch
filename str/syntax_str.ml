@@ -1,11 +1,14 @@
-(*pp $PP *)
+(*pp camlp4orf *)
+
+open Camlp4.PreCast
+open Syntax
 
 open Syntax_common
 open Select_lib
 open Match
 
 let extend_common () =
-EXTEND
+EXTEND Gram
   Pcaml.expr: [
     [ "RE_STR"; re = regexp -> 
 	Regexp_ast.warnings re;
@@ -29,10 +32,14 @@ let extend_revised () = extend_common ()
 let _ =
   select_lib Str_lib.lib;
 
+  (* Keeping it for backwards compatibility *)
   Pcaml.add_option "-thread" 
-    (Arg.Unit (fun () -> select_lib Str_lib.lib_mt))
-    " option required for multithreaded programs";
-
+    (Arg.Unit (
+       fun () -> 
+	 eprintf "Warning: the -thread option is no longer needed.\n/%!"
+     ))
+    " obsolete option, ignored";
+  
   (match !Pcaml.syntax_name with
        "OCaml" -> extend_regular ()
      | _ -> extend_revised ())

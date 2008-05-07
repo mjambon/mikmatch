@@ -23,7 +23,7 @@ OCAMLLDFLAGS = \
   regexp_ast.cmo \
   select_lib.cmo
 
-INCDIRS = ../micmatch_common $(PCRE_DIR)
+INCDIRS = ../common $(PCRE_DIR)
 
 USE_CAMLP4 = yes
 
@@ -57,9 +57,9 @@ force:
 
 links: match.ml syntax_common.ml
 
-syntax_common.ml: ../micmatch_common/syntax_common.ml
+syntax_common.ml: ../common/syntax_common.ml
 	ln -s $< $@
-match.ml: ../micmatch_common/match.ml
+match.ml: ../common/match.ml
 	ln -s $< $@
 
 pa_lib:

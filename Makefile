@@ -12,10 +12,6 @@ export PREFIX
 export BINDIR
 
 
-PP = camlp4orf
-export PP
-
-
 default: micmatch-pcre
 install: install-pcre
 uninstall: uninstall-pcre

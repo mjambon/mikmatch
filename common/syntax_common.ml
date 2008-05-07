@@ -1,7 +1,10 @@
-(*pp $PP *)
+(*pp camlp4orf *)
 
 
 open Printf
+
+open Camlp4.PreCast
+open Syntax
 
 open Regexp_ast
 open Select_lib
@@ -11,17 +14,13 @@ let regexp = Grammar.Entry.create Pcaml.gram "regexp";;
 let regexp_match_case = Grammar.Entry.create Pcaml.gram "regexp_match_case";;
 let range = Grammar.Entry.create Pcaml.gram "range";;
 
-let eval_string loc s =
-(*#if 3.06 | 3.07pre | 3.07 | 3.07_5
-  Token.eval_string s
-#else*)
-  Token.eval_string loc s
+let eval_string s = Camlp4.Struct.Token.Eval.string ~strict:() s
 
 let extend_common () =
-  (try DELETE_RULE Pcaml.patt: LIDENT END
+  (try DELETE_RULE Gram Pcaml.patt: LIDENT END
    with Not_found -> ());
   (try 
-     DELETE_RULE 
+     DELETE_RULE Gram 
        Pcaml.expr: 
        "let"; OPT "rec"; LIST1 Pcaml.let_binding SEP "and"; 
        "in"; Pcaml.expr LEVEL "top" 
@@ -29,21 +28,21 @@ let extend_common () =
    with Not_found -> ());
   
   (try
-     DELETE_RULE 
+     DELETE_RULE Gram
        Pcaml.str_item: 
        "let"; OPT "rec"; LIST1 Pcaml.let_binding SEP "and"; 
        "in"; Pcaml.expr
      END
    with Not_found -> ());
 
-EXTEND
+EXTEND Gram
   GLOBAL: regexp regexp_match_case range;
 
   Pcaml.str_item: [
     [ "RE"; name = LIDENT; "="; re = regexp -> 
 	warnings re;
 	Hashtbl.add named_regexps name re;
-      <:str_item< declare end >> ]
+      <:str_item< >> ]
   ];
 
   special_patt: [
@@ -54,7 +53,7 @@ EXTEND
   ];
 
   uid_path: [
-    [ l = LIST1 UIDENT SEP "." -> 
+    [ l = LIST1 [ x = UIDENT -> x ] SEP "." -> 
 	match List.rev l with 
 	    basename :: modname -> (loc, basename, List.rev modname)
 	  | _ -> assert false ]
@@ -202,12 +201,12 @@ END;;
 let extend_regular () =
   extend_common ();
   (try
-     DELETE_RULE
+     DELETE_RULE Gram
        Pcaml.str_item: "let"; OPT "rec"; LIST1 Pcaml.let_binding SEP "and"
      END
    with Not_found -> ());
 
-  EXTEND
+  EXTEND Gram
   Pcaml.expr: LEVEL "expr1" [
     [ "match"; target = Pcaml.expr; "with"; OPT "|";
       cases = LIST1 regexp_match_case SEP "|" -> 
@@ -230,12 +229,12 @@ let extend_revised () =
   extend_common ();
 
   (try
-     DELETE_RULE
+     DELETE_RULE Gram
        Pcaml.str_item: "value"; OPT "rec"; LIST1 Pcaml.let_binding SEP "and"
      END
    with Not_found -> ());
 
-  EXTEND
+  EXTEND Gram
   Pcaml.expr: LEVEL "top" [
     [ "match"; target = Pcaml.expr; "with"; "[";
       cases = LIST1 regexp_match_case SEP "|"; "]" -> 
