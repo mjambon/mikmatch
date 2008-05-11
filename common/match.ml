@@ -12,7 +12,7 @@ open Select_lib
 
 (* General Camlp4 utilities *)
 
-let list_of_expr e =
+let list_of_comma_expr e =
   let rec aux e l =
     match e with
 	<:expr< $e1$ , $e2$ >> -> aux e1 (aux e2 l)
@@ -21,7 +21,7 @@ let list_of_expr e =
   in
   aux e []
 
-let list_of_patt p =
+let list_of_comma_patt p =
   let rec aux p l =
     match p with
 	<:patt< $p1$ , $p2$ >> -> aux p1 (aux p2 l)
@@ -30,16 +30,48 @@ let list_of_patt p =
   in
   aux p []
 
-let expr_of_list _loc l =
+let list_of_semicolon_patt p =
+  let rec aux p l =
+    match p with
+	<:patt< $p1$ ; $p2$ >> -> aux p1 (aux p2 l)
+      | <:patt< >> -> []
+      | p -> [p]
+  in
+  aux p []
+
+let list_of_record p =
+  List.map (
+    function
+	<:patt< $p1$ = $p2$ >> -> (p1, p2)
+      | _ -> assert false
+  ) (list_of_semicolon_patt p)
+
+
+let comma_expr_of_list _loc l =
   List.fold_left (
     fun accu e -> <:expr< $accu$ , $e$ >>
   ) <:expr< >> l
 
-let patt_of_list _loc l =
+let comma_patt_of_list _loc l =
   List.fold_left (
     fun accu p -> <:patt< $accu$ , $p$ >>
   ) <:patt< >> l
 
+let semicolon_patt_of_list _loc l =
+  List.fold_left (
+    fun accu p -> <:patt< $accu$ ; $p$ >>
+  ) <:patt< >> l
+
+let record_of_list _loc l =
+  semicolon_patt_of_list _loc
+    (List.map (fun (p1, p2) -> <:patt< $p1$ = $p2$ >>) l)
+
+let meta_bool = function
+    true -> Ast.BTrue 
+  | false -> Ast.BFalse
+
+let binding_of_pair _loc (p, e) =
+  <:binding< $p$ = $e$ >>
 
 
 (* Regular expression to match *)
@@ -400,12 +432,12 @@ let find_view _loc name =
 let bind_target ?(force_string = false) _loc target =
   match target with
       <:expr< ( $tup:tup$ ) >> ->
-		 let el = list_of_expr tup in
+		 let el = list_of_comma_expr tup in
 		 let ids = List.map (fun _ -> new_target ()) el in
 		 let idl = List.map 
 			     (fun s -> <:expr< $lid:s$ >>)
 			     ids in
-		 let target = <:expr< ( $expr_of_list _loc idl$ ) >> in
+		 let target = <:expr< ( $comma_expr_of_list _loc idl$ ) >> in
 		 let make_target e =
 		   List.fold_right2 
 		     (fun x id e ->
@@ -502,10 +534,13 @@ let rec names patt =
 			     sub_alternatives = [] } in
 	     (set, false, `Normal, subpatt))
       
-    | <:patt< $anti:e$ >> -> names e
+    | <:patt< $id: _ $ >> -> 
+      (* Should be something like A.x or A.B.x (at least one period) *)
+      keep patt
+
+    | <:patt< $anti:s$ >> -> 
+      Messages.failure _loc ("don't know what to do with antiquotation " ^ s)
       
-    | <:ident< $p1$ . $p2$ >> -> (recons_patt2 _loc p1 p2 
-				    (fun p1 p2 -> <:ident< $p1$ . $p2$ >>))
     | <:patt< $p1$ .. $p2$ >> -> (recons_patt2 _loc p1 p2 
 				   (fun p1 p2 -> <:patt< $p1$ .. $p2$ >>))
     | <:patt< $p1$ $p2$ >> -> (recons_patt2 _loc p1 p2 
@@ -536,19 +571,22 @@ let rec names patt =
 	      subpatt1.sub_alternatives @ subpatt2.sub_alternatives } in
       (set1, (has_re1 || has_re2), `Special, subpatt)
 	
-    | <:patt< { $list:ppl$ } >> -> 
+    | <:patt< { $p$ } >> ->
+      let ppl = list_of_record p in 
       let (set, has_re, kind, spatts, l, res) = 
 	names_from_list names _loc ppl snd in
       let fields = 
 	List.map2 (fun (p1, p2) spatt -> (p1, spatt)) ppl spatts in
+      let record_body = record_of_list _loc fields in
       let subpatt = 
-	{ sub_patt = <:patt< { $list:fields$ } >>;
+	{ sub_patt = <:patt< { $record_body$ } >>;
 	  sub_names = set;
 	  sub_specials = res;
 	  sub_alternatives = l } in
       (set, has_re, kind, subpatt)
 	
-    | <:patt< [| $list:pl$ |] >> -> 
+    | <:patt< [| $p$ |] >> -> 
+      let pl = list_of_semicolon_patt p in
       let (set, has_re, kind, spatts, l, res) = 
 	names_from_list names _loc pl (fun x -> x) in
       let subpatt = 
@@ -558,11 +596,13 @@ let rec names patt =
 	  sub_alternatives = l } in
       (set, has_re, kind, subpatt)
 
-    | <:patt< ( $list:pl$ ) >> -> 
+    | <:patt< ( $p$ ) >> -> 
+      let pl = list_of_comma_patt p in
       let (set, has_re, kind, spatts, l, res) = 
 	names_from_list names _loc pl (fun x -> x) in
+      let tuple_body = comma_patt_of_list _loc spatts in
       let subpatt = 
-	{ sub_patt = <:patt< ( $list:spatts$ ) >>;
+	{ sub_patt = <:patt< ( $tuple_body$ ) >>;
 	  sub_names = set;
 	  sub_specials = res;
 	  sub_alternatives = l } in
@@ -637,31 +677,51 @@ let patt_is_lid = function
   | _ -> false
 
 
+
+let match_case_of_pwe _loc p w e = 
+  let we =
+    match w with
+	None -> <:expr< >>
+      | Some e -> e
+  in
+  <:match_case< $p$ when $we$ -> $e$ >>
+
+let match_case_of_tuple _loc (p, w, e) = 
+  match_case_of_pwe _loc p w e
+
+let match_case_of_tuple4 (_loc, p, w, e) =
+  match_case_of_pwe _loc p w e
+
+
 let simplify_match _loc target l default = 
   (* target is an expr that should not compute anything *)
   (* user-defined but unused expressions are kept for the type checker *)
   (* default normally raises a match_failure or reraises an exception *)
   match l with
       [] -> default
-    | [ (<:patt< _ >> , (None | Some <:expr< True >>), e) ] -> e
-    | [ (<:patt< $lid:id$ >>, (None | Some <:expr< True >>), e) ]
+
+    | [ <:patt< _ >>, (None | Some <:expr< True >>), e ] -> e
+    | [ <:patt< $lid:id$ >>, (None | Some <:expr< True >>), e ]
 	when expr_is_lid target ->
 	<:expr< let $lid:id$ = $target$ in $e$ >>
     | _ ->
 	let l' = l @ [ <:patt< _ >>, None, default ] in
-	<:expr< match $target$ with [ $list:l'$ ] >>
+	let match_cases = List.map (match_case_of_tuple _loc) l' in
+	<:expr< match $target$ with [ $list: match_cases$ ] >>
+
 
 let rec patt_succeeds patt = (* always?, catch_all? *)
   match patt with
       <:patt< _ >> -> (true, true)
     | <:patt< $lid:_$ >> -> (true, false)
-    | <:patt< ( $list:l$ ) >> ->
+    | <:patt< ( $tup:tup$ ) >> ->
+      let l = list_of_comma_patt tup in
       List.fold_left
-      (fun (works_always, is_catch_all) p ->
-	 let always, catch_all = patt_succeeds p in
-	 (works_always && always, is_catch_all && catch_all))
-      (false, true)
-      l
+	(fun (works_always, is_catch_all) p ->
+	   let always, catch_all = patt_succeeds p in
+	   (works_always && always, is_catch_all && catch_all))
+	(false, true)
+	l
     | _ -> (false, false) (* actually we could test if it is catch_all *)
 
 let match_one_case _loc target patt success failure =
@@ -728,8 +788,13 @@ let view_match x success =
   let view_fun = 
     let _loc = vloc in
     let base =
-      <:expr< $lid:"view_" ^ view_name$ >> in
-    List.fold_right (fun s r -> <:expr< $uid:s$ . $r$ >>) view_path base in
+      <:ident< $lid:"view_" ^ view_name$ >> in
+    let id =
+      List.fold_right (fun s r ->
+			 <:ident< $uid:s$ . $r$ >>)
+	view_path base in
+    <:expr< $id:id$ >>
+  in
   let var_name = var_of_view view_unique_name in
   let failure = raise_exit _loc in
   match arg with
@@ -777,8 +842,10 @@ let expand_subpatt _loc l after_success =
 	let subresult = 
 	  match vars with
 	      [] -> <:expr< () >>
-	    | [loc,s] -> <:expr< $lid:s$ >>
-	    | _ -> <:expr< ( $list:expr_id_list vars$ ) >> in
+	    | [_loc,s] -> <:expr< $id: <:ident< $lid:s$ >> $ >>
+	    | _ -> 
+		let tup = comma_expr_of_list _loc (expr_id_list vars) in
+		<:expr< ( $tup:tup$ ) >> in
 	let rec expand _loc l =
 	  match l with
 	      [] -> subresult, false
@@ -828,8 +895,11 @@ let expand_subpatt _loc l after_success =
             | _ ->
 		let p = 
 		  match vars with 
-		      [loc,s] -> <:patt< $lid:s$ >>
-		    | _ -> <:patt< ( $list:patt_id_list vars$ ) >> in
+		      [_loc,s] -> <:patt< $lid:s$ >>
+		    | _ -> 
+			let tup =
+			  comma_patt_of_list _loc (patt_id_list vars) in
+			<:patt< ( $tup:tup$ ) >> in
 		
 		let expanded_expr, may_fail = expand _loc l in
 		<:expr< let $p$ = $expanded_expr$ in $after_success$ >>,
@@ -916,7 +986,8 @@ let output_special_match _loc target_expr cases_with_re default_action =
 		     if may_fail1 || may_fail2 || subpatt_may_fail 
 		     then <:expr< 
 		       try $this_match$
-		       with [ $patt_exit _loc$ -> $rematch$ ] >>
+		       with [ $patt_exit _loc$ -> $rematch$ ] 
+		       >>
 		     else this_match in
 		   ([], e))
       cases_with_re
@@ -926,12 +997,15 @@ let output_special_match _loc target_expr cases_with_re default_action =
     simplify_match _loc target cases_without_regexp final_expr in
   make_target (app (wrap_all full_expr))
 
-let unloc l = List.map (fun (_loc, a, b, c) -> (a, b, c)) l
+
 
 let output_match _loc target_expr cases =
   match extract_re cases with
       false, _ -> (* change nothing *)
-	<:expr< match $target_expr$ with [ $list:unloc cases$ ] >>
+	let match_cases = 
+	  List.map match_case_of_tuple4 cases
+	in
+	<:expr< match $target_expr$ with [ $list:match_cases$ ] >>
 
     | true, cases_with_re -> 
 	output_special_match _loc target_expr cases_with_re (match_failure _loc)
@@ -942,7 +1016,8 @@ let _ = output_match_ref := output_match
 let output_try _loc e cases =
   match extract_re cases with
       false, _ -> (* change nothing *)
-	<:expr< try $e$ with [ $list:unloc cases$ ] >>
+	let match_cases = List.map match_case_of_tuple4 cases in
+	<:expr< try $e$ with [ $list:match_cases$ ] >>
     | true, cases_with_re -> 
 	let exn = <:expr< $lid:any_exn$ >> in
 	let default_action = <:expr< raise $exn$ >> in
@@ -954,7 +1029,8 @@ let output_try _loc e cases =
 let output_function _loc cases =
   match extract_re cases with
       false, _ -> (* change nothing *)
-	<:expr< fun [ $list:unloc cases$ ] >>
+	let match_cases = List.map match_case_of_tuple4 cases in
+	<:expr< fun [ $list:match_cases$ ] >>
     | true, cases_with_re -> 
 	let target = <:expr< $lid:any_target$ >> in
 	<:expr<
@@ -981,8 +1057,8 @@ let pp_named_groups _loc (groups, positions) =
 let find_named_regexp _loc name =
   try Hashtbl.find named_regexps name
   with Not_found ->
-    Stdpp.raise_with_loc _loc
-    (Failure ("Unbound regular expression " ^ name))
+    Messages.failure _loc
+      ("Unbound regular expression " ^ name)
 
 
 let handle_regexp_patt _loc re =
@@ -1012,7 +1088,9 @@ let gen_handle_let_bindings ?in_expr _loc is_rec l =
       <:patt< ( $lid:s$ : $lid: t$ ) >> as p
 	when is_reserved s || t = forbidden_type -> 
 			     Messages.misplaced_pattern p
-    | <:patt< ( $list:pl$ ) >> -> check_patts pl
+    | <:patt< ( $tup:tup$ ) >> ->
+      let pl = list_of_comma_patt tup in
+      check_patts pl
     | _ -> () 
   and check_patts l = List.iter check_one_patt l in
 
@@ -1027,8 +1105,8 @@ let gen_handle_let_bindings ?in_expr _loc is_rec l =
 			    t = forbidden_type) ->
 	(match classify_id s with
 	     `View ->
-	       Stdpp.raise_with_loc (Ast.loc_of_patt p)
-	         (Failure "Views are not supported in this kind of pattern")
+	       Messages.failure (Ast.loc_of_patt p)
+	         "Views are not supported in this kind of pattern"
 	   | `Other -> assert false
 	   | `Regexp -> ());
 	let names = lazy (list_all_names 
@@ -1051,9 +1129,13 @@ let gen_handle_let_bindings ?in_expr _loc is_rec l =
 	check_patts (List.map fst l);
 	match in_expr with
 	    None -> 
-	      `Str_item <:str_item< value $rec: is_rec$ $list:l$ >>
+	      let bindings = List.map (binding_of_pair _loc) l in
+	      `Str_item 
+	        <:str_item< value $rec: meta_bool is_rec$ $list:bindings$ >>
 	  | Some e2 -> 
-	      `Expr <:expr< let $rec: is_rec$ $list:l$ in $e2$ >>
+	      let bindings = List.map (binding_of_pair _loc) l in
+	      `Expr <:expr< let $rec: meta_bool is_rec$ $list:bindings$ in
+	                    $e2$ >>
 
 let handle_let_bindings _loc is_rec l e2 =
   match gen_handle_let_bindings ~in_expr:e2 _loc is_rec l with

@@ -1,4 +1,6 @@
-(*pp camlp4o q_MLast.cmo -loc loc *)
+(*pp camlp4orf *)
+
+open Camlp4.PreCast
 
 open Constants
 
@@ -16,11 +18,11 @@ open Printf
 open Regexp_ast
 
 let special_regexps = 
-  let loc = Constants.dummy_loc in
-  [ "bol", Special (loc, "^", ("bol", Some 0)); (* beginning of line *)
-    "eol", Special (loc, "$", ("eol", Some 0)); (* end of line *)
-    "bnd", Special (loc, "\\b", ("bnd", Some 0)); (* word boundary *)
-    "any", Special (loc, ".", ("any", Some 1)); (* any character 
+  let _loc = Constants.dummy_loc in
+  [ "bol", Special (_loc, "^", ("bol", Some 0)); (* beginning of line *)
+    "eol", Special (_loc, "$", ("eol", Some 0)); (* end of line *)
+    "bnd", Special (_loc, "\\b", ("bnd", Some 0)); (* word boundary *)
+    "any", Special (_loc, ".", ("any", Some 1)); (* any character 
 						   except newline *) ]
 
 (*
@@ -110,9 +112,9 @@ let rec rm_closed = function Closed ast -> rm_closed ast | ast -> ast
 
 let rec to_string ?(top = false) ((last_group, named_groups) as groups) accu = 
   function
-      Epsilon loc -> groups
-    | Special (loc, s, _) -> add_const accu s; groups
-    | Characters (loc, set) -> 
+      Epsilon _loc -> groups
+    | Special (_loc, s, _) -> add_const accu s; groups
+    | Characters (_loc, set) -> 
 	let l = Charset.list set in
 	(match l with
 	     [] -> groups
@@ -125,11 +127,11 @@ let rec to_string ?(top = false) ((last_group, named_groups) as groups) accu =
 	       add_const accu "]";
 	       groups)
 	  
-    | Sequence (loc, re1, re2) ->
+    | Sequence (_loc, re1, re2) ->
 	let groups = to_string groups accu re1 in
 	to_string groups accu re2
 	  
-    | Alternative (loc, re, Epsilon _, _, _) ->
+    | Alternative (_loc, re, Epsilon _, _, _) ->
 
 	let must_group = 
 	  not top && 
@@ -144,7 +146,7 @@ let rec to_string ?(top = false) ((last_group, named_groups) as groups) accu =
 	add_const accu "?";
 	groups
 
-    | Alternative (loc, re1, re2, _, _) ->
+    | Alternative (_loc, re1, re2, _, _) ->
 
 	let must_group = not top in
 	let last_group = if must_group then succ last_group else last_group in
@@ -163,7 +165,7 @@ let rec to_string ?(top = false) ((last_group, named_groups) as groups) accu =
 	       S.diff 
 		 (Named_groups.union set1 set2) 
 		 (Named_groups.inter set1 set2) in
-	     Messages.unbalanced_bindings loc (list_named_groups missing)) in
+	     Messages.unbalanced_bindings _loc (list_named_groups missing)) in
 
 	let (groups1, positions1) = named_groups1
 	and (groups2, positions2) = named_groups2 in
@@ -172,11 +174,11 @@ let rec to_string ?(top = false) ((last_group, named_groups) as groups) accu =
 
 	(last_group, (merge groups1 groups2, merge positions1 positions2))
 	  
-    | Repetition (loc, (Star, true), 
+    | Repetition (_loc, (Star, true), 
 		  (Repetition (_, (Star, true), _) as re)) -> 
 	to_string ~top groups accu re
 
-    | Repetition (loc, kind, re) ->
+    | Repetition (_loc, kind, re) ->
 	let must_group =
 	  not top && 
 	  match rm_closed re with
@@ -199,35 +201,35 @@ let rec to_string ?(top = false) ((last_group, named_groups) as groups) accu =
 	add_const accu op;
 	groups
 
-    | Bind (loc, re, name, conv) -> 
+    | Bind (_loc, re, name, conv) -> 
 	let last_group = succ last_group in
 	let named_groups = 
-	  add_new_group loc name conv last_group named_groups in
+	  add_new_group _loc name conv last_group named_groups in
 	add_const accu "\\(";
 	let groups = to_string (last_group, named_groups) accu re in
 	add_const accu "\\)";
 	groups
 
-    | Bind_pos (loc, name) -> 
+    | Bind_pos (_loc, name) -> 
 	let last_group = succ last_group in
-	let named_groups = add_new_pos loc name last_group named_groups in
+	let named_groups = add_new_pos _loc name last_group named_groups in
 	add_const accu "\\(\\)";
 	(last_group, named_groups)
 
-    | Backref (loc, name) ->
+    | Backref (_loc, name) ->
 	(try
 	   match Named_groups.find name (fst named_groups) with
-	       [] -> Messages.invalid_backref loc name
+	       [] -> Messages.invalid_backref _loc name
 	     | [(_, n, conv)] -> add_const accu (sprintf "\\%i" n); groups
 	     | l -> 
 		 add_const accu (sprintf "\\(%s\\)" 
 		   (String.concat "\\|"
 		      (List.map (fun (_, n, conv) -> sprintf "\\%i" n) l)));
 		 (succ last_group, named_groups)
-	 with Not_found -> Messages.invalid_backref loc name)
+	 with Not_found -> Messages.invalid_backref _loc name)
 	    
-    | Variable (loc, e) -> add_var accu e; groups
-    | Nocase_variable (loc, e) -> add_var_nocase accu e; groups
+    | Variable (_loc, e) -> add_var accu e; groups
+    | Nocase_variable (_loc, e) -> add_var_nocase accu e; groups
 	    
     | Closed ast -> 
 	let saved_named_groups = named_groups in
@@ -239,10 +241,10 @@ let rec to_string ?(top = false) ((last_group, named_groups) as groups) accu =
     | Lookbehind _ -> assert false
 
 let nocasify e =
-  let loc = MLast.loc_of_expr e in
+  let _loc = Ast.loc_of_expr e in
   <:expr< $uid: !mod_runtime$.nocase $e$ >>
 
-let process_regexp loc ~sharing re re_name =
+let process_regexp _loc ~sharing re re_name =
   let accu = ref [] in
   let (last_group, named_groups) = 
     to_string ~top:true (0, (Named_groups.empty, Named_groups.empty)) 
@@ -257,41 +259,41 @@ let process_regexp loc ~sharing re re_name =
 
 open Constants
 
-let expr_mutex loc = <:expr< $uid: !mod_runtime_mt$.$lid:str_mutex$ >>
+let expr_mutex _loc = <:expr< $uid: !mod_runtime_mt$.$lid:str_mutex$ >>
 
-let unlock loc =
-  <:expr< Mutex.unlock $expr_mutex loc$ >>
+let unlock _loc =
+  <:expr< Mutex.unlock $expr_mutex _loc$ >>
 
-let lock loc =
-  <:expr< Mutex.lock $expr_mutex loc$ >>
+let lock _loc =
+  <:expr< Mutex.lock $expr_mutex _loc$ >>
 
 let lock_unlock e =
-  let loc = MLast.loc_of_expr e in
-  <:expr< do { $lock loc$; 
-	       try let x = $e$ in do { $unlock loc$; x }
-               with [ exn -> do { $unlock loc$; raise exn } ] } >>
+  let _loc = Ast.loc_of_expr e in
+  <:expr< do { $lock _loc$; 
+	       try let x = $e$ in do { $unlock _loc$; x }
+               with [ exn -> do { $unlock _loc$; raise exn } ] } >>
 
 let unlock_lock e =
-  let loc = MLast.loc_of_expr e in
-  <:expr< do { $unlock loc$; 
-	       try let x = $e$ in do { $lock loc$; x }
-               with [ exn -> do { $lock loc$; raise exn } ] } >>
+  let _loc = Ast.loc_of_expr e in
+  <:expr< do { $unlock _loc$; 
+	       try let x = $e$ in do { $lock _loc$; x }
+               with [ exn -> do { $lock _loc$; raise exn } ] } >>
 
-let string_match loc re_name get_re target pos =
+let string_match _loc re_name get_re target pos =
   <:expr< Str.string_match $get_re$ $target$ $int:string_of_int pos$ >>
 
-let matched_group loc n target =
+let matched_group _loc n target =
   <:expr< Str.matched_group $int:string_of_int n$ $target$ >>
 
-let matched_position loc n target =
+let matched_position _loc n target =
   <:expr< Str.group_beginning $int:string_of_int n$ >>
 
-let compile_regexp ~mt loc re_args re_source =
+let compile_regexp ~mt _loc re_args re_source =
   let compile_string e =
     <:expr< Str.regexp $e$ >> in
     match re_args with
       [] -> 
-	let re_string = Match.compute_re_string loc re_source in
+	let re_string = Match.compute_re_string _loc re_source in
 	compile_string re_string
     | _ ->
 	let key = 
@@ -302,7 +304,7 @@ let compile_regexp ~mt loc re_args re_source =
 		  List.map (fun (name, _) -> <:expr< $lid:name$ >>) re_args in
 		<:expr< ( $list: expr_list$ ) >> in
 	let compile =
-	  let re_string = Match.compute_re_string loc re_source in
+	  let re_string = Match.compute_re_string _loc re_source in
 	  compile_string re_string in
 	    
 	let find = 
@@ -337,7 +339,7 @@ let compile_regexp ~mt loc re_args re_source =
 
   
 
-let convert loc conv e =
+let convert _loc conv e =
   match conv with
       None -> e
     | Some f ->
@@ -350,17 +352,17 @@ let convert loc conv e =
 	  | `Custom f -> <:expr< $f$ $e$ >>
 	  | `Value e' -> <:expr< $e'$ >>
 
-let insert_bindings_poly make_expr loc target set e =
+let insert_bindings_poly make_expr _loc target set e =
   Named_groups.fold
     (fun name l e -> 
        match l with
 	   [] -> assert false
-	 | (loc, _, _) :: _ ->
+	 | (_loc, _, _) :: _ ->
 	     let find_it =
 	       List.fold_right 
-		 (fun (loc, n, conv) accu ->
+		 (fun (_loc, n, conv) accu ->
 		    let expr = 
-		      convert loc conv (make_expr loc n target) in
+		      convert _loc conv (make_expr _loc n target) in
 		    match accu with
 			None -> Some expr
 		      | Some e ->
@@ -379,24 +381,24 @@ let insert_bindings_poly make_expr loc target set e =
 let insert_group_bindings = insert_bindings_poly matched_group
 let insert_position_bindings = insert_bindings_poly matched_position
 
-let insert_bindings loc target (group_bindings, position_bindings) e =
-  insert_group_bindings loc target group_bindings 
-    (insert_position_bindings loc target position_bindings e)
+let insert_bindings _loc target (group_bindings, position_bindings) e =
+  insert_group_bindings _loc target group_bindings 
+    (insert_position_bindings _loc target position_bindings e)
 
 
-let match_and_bind loc re_name get_re target named_groups success failure =
+let match_and_bind _loc re_name get_re target named_groups success failure =
   <:expr< 
-  if $string_match loc re_name get_re target 0$
-  then $insert_bindings loc target named_groups success$
+  if $string_match _loc re_name get_re target 0$
+  then $insert_bindings _loc target named_groups success$
   else $failure$ >>
 
 
-let macro_replace loc re_name target_name named_groups expr =
+let macro_replace _loc re_name target_name named_groups expr =
   let target = <:expr< $lid:target_name$ >> in
   <:expr<
   fun $lid:target_name$ ->
     Str.global_substitute $lid:re_name$ 
-    (fun _ -> $insert_bindings loc target named_groups expr$)
+    (fun _ -> $insert_bindings _loc target named_groups expr$)
     $target$ >>
 
 
