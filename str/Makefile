@@ -1,6 +1,7 @@
 BINDIR = $(shell dirname `which ocaml`)
 
 SOURCES = \
+  mm_util.ml \
   match.ml \
   str_lib.ml \
   syntax_common.ml \
@@ -9,8 +10,6 @@ SOURCES = \
 RESULT = micmatch_str
 
 OCAMLLDFLAGS = \
-  declare_once.cmo \
-  pa_use.cmo \
   messages.cmo charset.cmo \
   constants.cmo \
   regexp_ast.cmo \
@@ -25,9 +24,8 @@ LIBINSTALL_FILES := \
   pa_micmatch_str.cma pa_micmatch_str.cmo pa_micmatch_str.cmi \
   run_micmatch_str.cma run_micmatch_str.cmo run_micmatch_str.cmi \
   micmatch.cmi micmatch.cmo micmatch.cmx micmatch.mli \
-  run_micmatch_str.cmxa run_micmatch_str.cmx run_micmatch_str.a run_micmatch_str.o \
-  run_micmatch_str_mt.cma run_micmatch_str_mt.cmo run_micmatch_str_mt.cmi \
-  run_micmatch_str_mt.cmxa run_micmatch_str_mt.cmx run_micmatch_str_mt.a run_micmatch_str_mt.o
+  run_micmatch_str.cmxa run_micmatch_str.cmx \
+  run_micmatch_str.a run_micmatch_str.o
 
 .PHONY: default force all links 
 
@@ -38,11 +36,17 @@ force:
 
 all:
 
-links: match.ml syntax_common.ml
+links: micmatch.mli micmatch.ml match.ml syntax_common.ml mm_util.ml
 
+micmatch.mli: ../common/micmatch.mli
+	ln -s $< $@
+micmatch.ml: ../common/micmatch.ml
+	ln -s $< $@
 syntax_common.ml: ../common/syntax_common.ml
 	ln -s $< $@
 match.ml: ../common/match.ml
+	ln -s $< $@
+mm_util.ml: ../common/mm_util.ml
 	ln -s $< $@
 
 .PHONY: pa_lib install uninstall version topinstall misc
@@ -66,10 +70,6 @@ misc:
 		micmatch.ml run_micmatch_str.ml
 	ocamlopt -a -o run_micmatch_str.cmxa \
 		micmatch.ml run_micmatch_str.ml
-	ocamlc -a -thread -o run_micmatch_str_mt.cma \
-		micmatch.ml run_micmatch_str.ml run_micmatch_str_mt.ml
-	ocamlopt -a -thread -o run_micmatch_str_mt.cmxa \
-		micmatch.ml run_micmatch_str.ml run_micmatch_str_mt.ml
 	ocamlmktop -o micmatch_str.top \
 		-I +camlp4 \
 		camlp4o.cma \

@@ -1,11 +1,9 @@
-PCRE_DIR = $(shell ocamlfind query pcre)
-# PCRE_DIR = something else
-
 ifndef BINDIR
   BINDIR = $(shell dirname `which ocaml`)
 endif
 
 SOURCES = \
+  mm_util.ml \
   match.ml \
   pcre_lib.ml \
   syntax_common.ml \
@@ -23,7 +21,7 @@ OCAMLLDFLAGS = \
   regexp_ast.cmo \
   select_lib.cmo
 
-INCDIRS = ../common $(PCRE_DIR)
+INCDIRS = ../common
 
 USE_CAMLP4 = yes
 
@@ -55,11 +53,17 @@ force:
 	touch $(SOURCES)
 	$(MAKE)
 
-links: match.ml syntax_common.ml
+links: micmatch.mli micmatch.ml match.ml syntax_common.ml mm_util.ml
 
+micmatch.mli: ../common/micmatch.mli
+	ln -s $< $@
+micmatch.ml: ../common/micmatch.ml
+	ln -s $< $@
 syntax_common.ml: ../common/syntax_common.ml
 	ln -s $< $@
 match.ml: ../common/match.ml
+	ln -s $< $@
+mm_util.ml: ../common/mm_util.ml
 	ln -s $< $@
 
 pa_lib:
@@ -104,15 +108,17 @@ test:
 		camlp4o.cma \
 		pa_micmatch_pcre.cma pcre.cma unix.cma run_micmatch_pcre.cma
 
-# Compilation without ocamlfind (preinstall test)
+# Preinstall test
 more-tests:
 	camlp4o ./pa_micmatch_pcre.cma -printer o -direct test.ml > test.ppo
-	ocamlopt -pp 'camlp4o ./pa_micmatch_pcre.cma -direct' \
-		-I $(PCRE_DIR) pcre.cmxa unix.cmxa run_micmatch_pcre.cmxa \
+	ocamlfind ocamlopt -syntax camlp4o \
+		-package pcre \
+		-ppopt ./pa_micmatch_pcre.cma -ppopt -direct \
+		run_micmatch_pcre.cmxa \
 		test.ml -o test
 	./test
 
-# Compilation with ocamlfind (postinstall test)
+# Postinstall test
 test-install:
 	ocamlfind ocamlopt \
 		-syntax camlp4o \

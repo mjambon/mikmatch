@@ -1,6 +1,9 @@
-(*pp $PP *)
+(*pp camlp4orf *)
 
 open Printf
+
+open Camlp4.PreCast
+open Syntax
 
 open Regexp_ast
 open Syntax_common
@@ -84,7 +87,7 @@ let lookbehind loc bopt re =
   Lookbehind (loc, positive, if positive then re else Closed re)
 
 let extend_common ?(expr1_level = "expr1") () =
-EXTEND
+EXTEND Gram
   Pcaml.expr: LEVEL $expr1_level$ [ 
     [ "RE_PCRE"; re = regexp -> 
 	warnings re;
@@ -149,9 +152,10 @@ EXTEND
   regexp: LEVEL "simple" [
     [ "_" -> Characters (loc, Charset.full)
     | "<";
-      x = OPT [ b1 = OPT UIDENT "Not"; re1 = regexp -> (b1, re1) ]; 
+      x = OPT [ b1 = OPT [ x = UIDENT "Not" -> x ];
+		re1 = regexp -> (b1, re1) ]; 
       y = OPT [ "."; 
-		r2 = OPT [ b2 = OPT UIDENT "Not"; 
+		r2 = OPT [ b2 = OPT [ x = UIDENT "Not" -> x ]; 
 			   re2 = regexp -> (b2, re2) ] -> r2 ];
       ">" ->
 	match x, y with

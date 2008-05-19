@@ -1,7 +1,9 @@
 (*pp camlp4orf *)
+(* $Id$ *)
 
 open Camlp4.PreCast
 
+open Mm_util
 open Constants
 
 let _ =
@@ -302,7 +304,8 @@ let compile_regexp ~mt _loc re_args re_source =
 	    | _ -> 
 		let expr_list = 
 		  List.map (fun (name, _) -> <:expr< $lid:name$ >>) re_args in
-		<:expr< ( $list: expr_list$ ) >> in
+		let tup = comma_expr_of_list _loc expr_list in
+		<:expr< ( $tup: tup$ ) >> in
 	let compile =
 	  let re_string = Match.compute_re_string _loc re_source in
 	  compile_string re_string in
