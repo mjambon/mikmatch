@@ -1,5 +1,7 @@
 open Printf
 
+let _ = function RE "" -> ()
+
 (* Definition of regular expressions for further use *)
 RE space = [' ' '\t' '\n' '\r']
 RE not_space = _ # space
@@ -21,8 +23,8 @@ RE word = letter+
 
 let test expected a b c =
   printf "[case %i] " expected; flush stdout;
-  (match a, b, c with
-       None, (None | Some (RE space*)), None -> printf "case 1\n"
+  (match a, b, c with 
+       None, (None | Some (RE space* )), None -> printf "case 1\n"
      | Some ({ contents = [| RE (word as x); _; y |]}),
        (Some ("test" as z | RE word space (word as z))),
        None -> printf "case 2: %S %S %S\n" x y z
@@ -45,7 +47,7 @@ let _ =
 
 let _ =
   match "" with
-      (RE (("a" as a) | ("b" as a))) | a -> ()
+      (RE (("a" as a) | ("b" as a))) | a -> a
 
 let hello_who s =
   match s with
@@ -68,7 +70,7 @@ let _ =
 let _ =
   printf "Test (local and global bindings):\n"; flush stdout;
   match "" with
-      (RE (word as x | space+ (word as x))*) | _ -> 
+      (RE (word as x | space+ (word as x))* ) | _ -> 
 	printf "Passed.\n"
 
 let _ =
@@ -203,10 +205,6 @@ let _ =
       RE digit+ as n := fun _ -> 1 -> n
     | _ -> 2
 
-let _ =
-  match "123456", Some "blop" with
-      RE ['0'-'3']* as x : option ['4'-'9']+ , _
-    | _, x -> x
 
 
 (* Parametrized regexps *)
@@ -217,3 +215,4 @@ let _ =
       | _ -> assert false in
   find "b";
   find "g"
+

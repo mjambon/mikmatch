@@ -64,19 +64,19 @@ EXTEND Gram
     [ x = special_patt -> handle_special_patt _loc x ]
   ];
 
-  expr: LEVEL "expr1" [
+  expr: LEVEL "top" [
     [ "let"; o = OPT "rec"; l = LIST1 let_binding SEP "and"; "in";
         e2 = expr LEVEL "top" ->
 	  handle_let_bindings _loc (o <> None) (List.map pair_of_binding l) e2 ]
   ];
 
-  expr: LEVEL "expr1" [
+  expr: LEVEL "top" [
     [ "let"; LIDENT "view"; 
       name = UIDENT; "="; e1 = expr; "in"; e2 = expr ->
 	<:expr< let $lid:"view_" ^ name$ = $e1$ in $e2$ >> ]
   ];
 
-  expr: LEVEL "expr1" [
+  expr: LEVEL "top" [
     [ "let"; "try"; o = OPT "rec"; l = LIST1 let_binding SEP "and"; 
       "in"; e2 = expr LEVEL "top";
       "with"; pwel = LIST1 lettry_case SEP "|" ->
@@ -208,9 +208,14 @@ let extend_regular () =
        str_item: "let"; OPT "rec"; LIST1 let_binding SEP "and"
      END
    with Not_found -> ());
+  (try
+     DELETE_RULE Gram
+       expr: "function"; match_case
+     END
+   with Not_found -> ());
 
   EXTEND Gram
-  expr: LEVEL "expr1" [
+  expr: LEVEL "top" [
     [ "match"; target = expr; "with"; OPT "|";
       cases = LIST1 regexp_match_case SEP "|" -> 
 	output_match _loc target cases
@@ -218,7 +223,7 @@ let extend_regular () =
       cases = LIST1 regexp_match_case SEP "|" -> 
 	output_try _loc e cases
     | "function"; OPT "|"; cases = LIST1 regexp_match_case SEP "|" ->
-        output_function _loc cases ]
+	output_function _loc cases ]
   ];
 
   str_item: LEVEL "top" [
@@ -256,6 +261,7 @@ let extend_revised () =
   END
 
 
+
 let () =
   init_named_regexps ();
 
@@ -266,8 +272,6 @@ let () =
   Camlp4.Options.add "-direct" 
     (Arg.Clear tailrec)
     " produce code that does not try to preserve tail-recursivity";
-
-  (match Id.name with
-       "OCaml" -> extend_regular ()
-     | _ -> extend_revised ())
-
+  
+  (* How to test if the current syntax is the regular or revised one? *)
+  extend_regular ()

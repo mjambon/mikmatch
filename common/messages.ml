@@ -5,9 +5,9 @@ open Printf
 open Camlp4.PreCast
 
 let warning _loc s =
-  Loc.print Format.err_formatter _loc;
+  (* Format.err_formatter _loc;*)
   let label = if !Sys.interactive then "" else "Warning: " in
-  Format.eprintf "%s%s\n%!" label s
+  Format.eprintf "%a:@.%s%s@." Loc.print _loc label s
 
 let failure _loc s =
   (* does it print the error like Stdpp.raise_with_loc? *)

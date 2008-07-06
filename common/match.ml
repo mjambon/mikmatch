@@ -10,7 +10,6 @@ open Regexp_ast
 open Constants
 open Select_lib
 
-
 (* Regular expression to match *)
 type regexp_info = 
     { re_loc : Ast.loc;
@@ -62,6 +61,7 @@ let output_match_ref = ref (fun _ -> assert false)
 let unloc l = List.map snd l
 
 let pattify _loc l =
+  debug "pattify";
   match List.map (fun (_loc, s) -> <:patt< $lid:s$ >>) l with
       [] -> <:patt< () >>
     | [p] -> p
@@ -74,6 +74,7 @@ let pattify _loc l =
 
 
 let exprify _loc l =
+  debug "exprify";
   match List.map (fun (_loc, s) -> <:expr< $lid:s$ >>) l with
       [] -> <:expr< () >>
     | [e] -> e
@@ -374,7 +375,8 @@ let bind_target ?(force_string = false) _loc target =
 		 let idl = List.map 
 			     (fun s -> <:expr< $lid:s$ >>)
 			     ids in
-		 let target = <:expr< ( $comma_expr_of_list _loc idl$ ) >> in
+		 let target = 
+		   <:expr< ( $tup:comma_expr_of_list _loc idl$ ) >> in
 		 let make_target e =
 		   List.fold_right2 
 		     (fun x id e ->
@@ -429,6 +431,7 @@ let names_from_list names _loc l get =
     (Names.empty, false, `Normal, [], [], [])
     
 let rec names patt =
+  debug "Match.names";
   let _loc = Ast.loc_of_patt patt in
   match patt with
     | <:patt< ( $p$ : $lid:s$ ) >> when s = forbidden_type -> 
@@ -438,7 +441,6 @@ let rec names patt =
       recons_patt1 _loc p (fun p -> <:patt< ( $p$ : $t$ ) >>)
      
     | <:patt< $lid:id$ >> ->
-
       (match classify_id id with
 	   `Regexp -> 
 	     let re_name = regexp_of_var id in
@@ -478,13 +480,18 @@ let rec names patt =
     | <:patt< $anti:s$ >> -> 
       Messages.failure _loc ("don't know what to do with antiquotation " ^ s)
       
-    | <:patt< $p1$ .. $p2$ >> -> (recons_patt2 _loc p1 p2 
-				   (fun p1 p2 -> <:patt< $p1$ .. $p2$ >>))
-    | <:patt< $p1$ $p2$ >> -> (recons_patt2 _loc p1 p2 
-				   (fun p1 p2 -> <:patt< $p1$ $p2$ >>))
-    | <:patt< ( $p1$ as $p2$ ) >> -> (recons_patt2 _loc p1 p2 
-					(fun p1 p2 -> 
-					   <:patt< ( $p1$ as $p2$ ) >>))
+    | <:patt< $p1$ .. $p2$ >> -> 
+      (recons_patt2 _loc p1 p2 
+	 (fun p1 p2 -> <:patt< $p1$ .. $p2$ >>))
+
+    | <:patt< $p1$ $p2$ >> ->
+      (recons_patt2 _loc p1 p2 
+	 (fun p1 p2 -> <:patt< $p1$ $p2$ >>))
+
+    | <:patt< ( $p1$ as $p2$ ) >> ->
+      (recons_patt2 _loc p1 p2 
+	 (fun p1 p2 -> 
+	    <:patt< ( $p1$ as $p2$ ) >>))
 
 
     | <:patt< $p1$ | $p2$ >> -> 
@@ -533,13 +540,13 @@ let rec names patt =
 	  sub_alternatives = l } in
       (set, has_re, kind, subpatt)
 
-    | <:patt< ( $p$ ) >> -> 
+    | <:patt< ( $tup:p$ ) >> -> 
       let pl = list_of_comma_patt p in
       let (set, has_re, kind, spatts, l, res) = 
 	names_from_list names _loc pl (fun x -> x) in
       let tuple_body = comma_patt_of_list _loc spatts in
       let subpatt = 
-	{ sub_patt = <:patt< ( $tuple_body$ ) >>;
+	{ sub_patt = <:patt< ( $tup:tuple_body$ ) >>;
 	  sub_names = set;
 	  sub_specials = res;
 	  sub_alternatives = l } in
@@ -549,7 +556,6 @@ let rec names patt =
     | <:patt< $chr:_$ >>
     | <:patt< $int:_$ >>
     | <:patt< $str:_$ >>
-    | <:patt< $uid:_$ >>
     | <:patt< $flo:_$ >>
     | <:patt< _ >> -> keep patt
 
@@ -560,7 +566,12 @@ let rec names patt =
     | Ast.PaVrn (_, _) 
     | Ast.PaTyp (_, _) -> keep patt
 
+    | <:patt< $_$ , $_$ >> (* tuple items *)
+    | <:patt< $_$ ; $_$ >> (* record or array items *)
+    | <:patt< $_$ = $_$ >> (* record field *)
+    | <:patt< >>
     | Ast.PaOlb _    (* optional label *)
+    | Ast.PaOlbi _   (* ? *)
     | Ast.PaLab _ -> (* label *)
 	Messages.invalid_pattern _loc
 
@@ -866,6 +877,7 @@ let force_when patt when_opt =
     | _ -> when_opt
 
 let output_special_match _loc target_expr cases_with_re default_action =
+  debug "output_special_match";
   let wrap_all = !(lib).wrap_match in
   let wrap = !(lib).wrap_user_case in
   let really_wrap = !(lib).really_wrap_user_case in
@@ -964,6 +976,7 @@ let output_try _loc e cases =
 	       $output_special_match _loc exn cases_with_re default_action$ ] >>
 
 let output_function _loc cases =
+  debug "output_function";
   match extract_re cases with
       false, _ -> (* change nothing *)
 	let match_cases = List.map match_case_of_tuple4 cases in
@@ -977,6 +990,7 @@ let output_function _loc cases =
 
 
 let pp_named_groups _loc (groups, positions) =
+  debug "pp_named_groups";
   let l1 = Named_groups.list groups in
   let l2 = Named_groups.list positions in
   let l = l1 @ l2 in

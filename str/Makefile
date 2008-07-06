@@ -2,6 +2,7 @@ BINDIR = $(shell dirname `which ocaml`)
 
 SOURCES = \
   mm_util.ml \
+  global_def.mli global_def.ml \
   match.ml \
   str_lib.ml \
   syntax_common.ml \
@@ -36,7 +37,8 @@ force:
 
 all:
 
-links: micmatch.mli micmatch.ml match.ml syntax_common.ml mm_util.ml
+links: micmatch.mli micmatch.ml match.ml syntax_common.ml mm_util.ml \
+	global_def.mli global_def.ml
 
 micmatch.mli: ../common/micmatch.mli
 	ln -s $< $@
@@ -47,6 +49,10 @@ syntax_common.ml: ../common/syntax_common.ml
 match.ml: ../common/match.ml
 	ln -s $< $@
 mm_util.ml: ../common/mm_util.ml
+	ln -s $< $@
+global_def.mli: ../common/global_def.mli
+	ln -s $< $@
+global_def.ml: ../common/global_def.ml
 	ln -s $< $@
 
 .PHONY: pa_lib install uninstall version topinstall misc
@@ -70,32 +76,23 @@ misc:
 		micmatch.ml run_micmatch_str.ml
 	ocamlopt -a -o run_micmatch_str.cmxa \
 		micmatch.ml run_micmatch_str.ml
-	ocamlmktop -o micmatch_str.top \
-		-I +camlp4 \
-		camlp4o.cma \
-		pa_micmatch_str.cma str.cma unix.cma run_micmatch_str.cma
-	./make_micmatch_str
 
 
-.PHONY: test1 more-tests test-install
-test: test1 more-tests
+.PHONY: test1 test-install
+test: test1
 
-# Toplevel (preinstall test)
+# (preinstall test)
 test1:
 	camlp4o ./pa_micmatch_str.cma -printer o test1.ml > test1.ppo
-	ocamlmktop -o micmatch_str.test -I +camlp4 -I . camlp4o.cma \
-		pa_micmatch_str.cma str.cma unix.cma run_micmatch_str.cma
-	./micmatch_str.test test1.ml
+	ocamlopt -pp 'camlp4o ./pa_micmatch_str.cma' \
+		str.cmxa unix.cmxa \
+		run_micmatch_str.cmxa \
+		test1.ml -o test1
+	./test1
+#	ocamlmktop -o micmatch_str.test -I +camlp4 -I . camlp4o.cma \
+#		pa_micmatch_str.cma str.cma unix.cma run_micmatch_str.cma
+#	./micmatch_str.test test1.ml
 
-# Compilation without ocamlfind (preinstall test)
-more-tests:
-	camlp4o ./pa_micmatch_str.cma -printer o -thread -direct test1.ml \
-		> test1_mt.ppo
-	ocamlopt -pp 'camlp4o ./pa_micmatch_str.cma -thread -direct' \
-		 -thread threads.cmxa str.cmxa unix.cmxa \
-		run_micmatch_str_mt.cmxa \
-		test1.ml -o test1_mt
-	./test1_mt
 
 # Compilation with ocamlfind (postinstall test)
 test-install:
@@ -103,17 +100,9 @@ test-install:
 		-syntax camlp4o \
 		-package micmatch_str\
 		-linkpkg \
-		test1.ml -o test1
-	ocamlfind ocamlopt \
-		-thread \
-		-syntax camlp4o \
-		-package micmatch_str \
-		-ppopt -thread \
-		-ppopt -direct \
-		-linkpkg \
-		test1.ml -o test1_mt
-	./test1
-	./test1_mt
+		test1.ml -o test1_inst
+	./test1_inst
+
 
 TRASH = \
  *~ *.ppo *.cm[ioxa] *.cmxa *.o *.a *.top \
