@@ -39,10 +39,11 @@ let _ =
   Camlp4.Options.add "-thread" 
     (Arg.Unit (
        fun () -> 
-	 eprintf "Warning: the -thread option is no longer needed.\n/%!"
+	 select_lib Str_lib.lib_mt;
+	 eprintf "Warning: -thread is deprecated.\n/%!"
      ))
-    " obsolete option, ignored";
+    " Deprecated option that protects access to shared data with a mutex. \
+      Currently only patterns containing @ are concerned.";
   
-  (match Id.name with
-       "OCaml" -> extend_regular ()
-     | _ -> extend_revised ())
+  (* How to test if the current syntax is the regular or revised one? *)
+  extend_regular ()

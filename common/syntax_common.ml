@@ -20,17 +20,13 @@ let extend_common () =
    with Not_found -> ());
   (try 
      DELETE_RULE Gram 
-       expr: 
-       "let"; OPT "rec"; LIST1 let_binding SEP "and"; 
-       "in"; expr LEVEL "top" 
+       expr: "let"; OPT "rec"; binding; "in"; expr LEVEL ";" 
      END
    with Not_found -> ());
   
   (try
      DELETE_RULE Gram
-       str_item: 
-       "let"; OPT "rec"; LIST1 let_binding SEP "and"; 
-       "in"; expr
+       str_item: "let"; OPT "rec"; binding; "in"; expr
      END
    with Not_found -> ());
 

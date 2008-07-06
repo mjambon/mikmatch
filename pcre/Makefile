@@ -1,9 +1,13 @@
+PCRE_DIR = $(shell ocamlfind query pcre)
+# PCRE_DIR = something else
+
 ifndef BINDIR
   BINDIR = $(shell dirname `which ocaml`)
 endif
 
 SOURCES = \
   mm_util.ml \
+  global_def.mli global_def.ml \
   match.ml \
   pcre_lib.ml \
   syntax_common.ml \
@@ -14,8 +18,6 @@ RESULT = micmatch_pcre
 OCAMLFLAGS = -dtypes
 
 OCAMLLDFLAGS = \
-  declare_once.cmo \
-  pa_use.cmo \
   messages.cmo charset.cmo \
   constants.cmo \
   regexp_ast.cmo \
@@ -39,7 +41,7 @@ ALL_LIBINSTALL_FILES = \
 .PHONY: default all-bc all-nc all force links pa_lib install uninstall \
         version topinstall misc-bc misc-nc
 
-default: links pa_lib misc-bc misc-nc
+default: version links pa_lib misc-bc misc-nc
 	touch bytecode
 	touch nativecode
 all-bc: links pa_lib misc-bc
@@ -53,7 +55,8 @@ force:
 	touch $(SOURCES)
 	$(MAKE)
 
-links: micmatch.mli micmatch.ml match.ml syntax_common.ml mm_util.ml
+links: micmatch.mli micmatch.ml match.ml syntax_common.ml mm_util.ml \
+	global_def.mli global_def.ml
 
 micmatch.mli: ../common/micmatch.mli
 	ln -s $< $@
@@ -64,6 +67,10 @@ syntax_common.ml: ../common/syntax_common.ml
 match.ml: ../common/match.ml
 	ln -s $< $@
 mm_util.ml: ../common/mm_util.ml
+	ln -s $< $@
+global_def.mli: ../common/global_def.mli
+	ln -s $< $@
+global_def.ml: ../common/global_def.ml
 	ln -s $< $@
 
 pa_lib:
@@ -81,7 +88,7 @@ uninstall:
 	$(MAKE) libuninstall
 
 version:
-	sed -e "s/VERSION/$VERSION" < META.template > META
+	sed -e "s/VERSION/$(VERSION)/" < META.template > META
 
 misc-bc:
 	ocamlc -c micmatch.mli
@@ -98,11 +105,11 @@ misc-nc:
 		micmatch.ml run_micmatch_pcre.ml
 
 
-.PHONY: test more-tests test-install
-test: test more-tests
+.PHONY: test simple-test more-tests test-install
+test: simple-test more-tests
 
 # Toplevel (preinstall test)
-test:
+simple-test:
 	camlp4o ./pa_micmatch_pcre.cma -printer o test.ml > test.ppo
 	ocamlmktop -o micmatch_pcre.test -I +camlp4 -I .  -I $(PCRE_DIR) \
 		camlp4o.cma \
@@ -111,10 +118,9 @@ test:
 # Preinstall test
 more-tests:
 	camlp4o ./pa_micmatch_pcre.cma -printer o -direct test.ml > test.ppo
-	ocamlfind ocamlopt -syntax camlp4o \
-		-package pcre \
-		-ppopt ./pa_micmatch_pcre.cma -ppopt -direct \
-		run_micmatch_pcre.cmxa \
+	ocamlopt \
+		-pp 'camlp4o ./pa_micmatch_pcre.cma' \
+		-I $(PCRE_DIR) pcre.cmxa micmatch_pcre.cmxa \
 		test.ml -o test
 	./test
 

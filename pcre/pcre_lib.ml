@@ -1,5 +1,12 @@
-(*pp camlp4o q_MLast.cmo -loc loc *)
+(*pp camlp4orf *)
 
+
+open Printf
+
+open Camlp4.PreCast
+
+open Mm_util
+open Regexp_ast
 
 let _ =
   Constants.mod_runtime := "Run_micmatch_pcre";
@@ -7,26 +14,22 @@ let _ =
 
 (* output for PCRE: Perl Compatible Regular Expressions *)
 
-open Printf
-
-open Regexp_ast
-
 let special_regexps = 
-  let loc = Constants.dummy_loc in
+  let _loc = Constants.dummy_loc in
   [ "any",   (* any character except newline *)
-    Special (loc, ".", ("any", Some 1));
+    Special (_loc, ".", ("any", Some 1));
     
     "bol",   (* beginning of line *)
-    Special (loc, "(?:^|(?<=\n))", ("bol", Some 0));
+    Special (_loc, "(?:^|(?<=\n))", ("bol", Some 0));
 
     "eol",   (* end of line *)
-    Special (loc, "(?:$|(?=\n))", ("eol", Some 0));
+    Special (_loc, "(?:$|(?=\n))", ("eol", Some 0));
 
     "bos",   (* beginning of string *)
-    Special (loc, "^", ("bos", Some 0));
+    Special (_loc, "^", ("bos", Some 0));
     
     "eos",   (* end of string *)
-    Special (loc, "$", ("eos", Some 0)); ]
+    Special (_loc, "$", ("eos", Some 0)); ]
 
 
 let string c = String.make 1 c
@@ -76,7 +79,7 @@ let compact l =
     | hd :: tl -> extend hd hd tl
 
 
-let compact_charset loc l =
+let compact_charset _loc l =
   let sorted = List.sort Char.compare l in
   let (zero, nozero) =
     match sorted with
@@ -97,9 +100,9 @@ let add_var_nocase accu e =
 
 let rec to_string ?(top = false) ((last_group, named_groups) as groups) accu = 
   function
-      Epsilon loc -> groups
-    | Special (loc, s, _) -> add_const accu s; groups
-    | Characters (loc, set) -> 
+      Epsilon _loc -> groups
+    | Special (_loc, s, _) -> add_const accu s; groups
+    | Characters (_loc, set) -> 
 	let l = Charset.list set in
 	(match l with
 	     [] -> groups
@@ -107,14 +110,14 @@ let rec to_string ?(top = false) ((last_group, named_groups) as groups) accu =
 	       add_const accu (quote_char c); 
 	       groups
 	   | _ ->
-	       add_const accu (sprintf "[%s]" (compact_charset loc l));
+	       add_const accu (sprintf "[%s]" (compact_charset _loc l));
 	       groups)
 	  
-    | Sequence (loc, re1, re2) ->
+    | Sequence (_loc, re1, re2) ->
 	let groups = to_string groups accu re1 in
 	to_string groups accu re2
 	  
-    | Alternative (loc, re, Epsilon _, _, _) ->
+    | Alternative (_loc, re, Epsilon _, _, _) ->
 
 	let must_group = 
 	  not top && 
@@ -128,7 +131,7 @@ let rec to_string ?(top = false) ((last_group, named_groups) as groups) accu =
 	add_const accu "?";
 	groups
 
-    | Alternative (loc, re1, re2, _, _) ->
+    | Alternative (_loc, re1, re2, _, _) ->
 
 	let must_group = not top in
 	if must_group then add_const accu "(?:";
@@ -146,7 +149,7 @@ let rec to_string ?(top = false) ((last_group, named_groups) as groups) accu =
 	       S.diff 
 		 (Named_groups.union set1 set2) 
 		 (Named_groups.inter set1 set2) in
-	     Messages.unbalanced_bindings loc (list_named_groups missing)) in
+	     Messages.unbalanced_bindings _loc (list_named_groups missing)) in
 
 	let (groups1, positions1) = named_groups1
 	and (groups2, positions2) = named_groups2 in
@@ -155,7 +158,7 @@ let rec to_string ?(top = false) ((last_group, named_groups) as groups) accu =
 	  
 	(last_group, (merge groups1 groups2, merge positions1 positions2))
 	  
-    | Repetition (loc, (kind, greedy), re) ->
+    | Repetition (_loc, (kind, greedy), re) ->
 	let must_group =
 	  not top && 
 	  match rm_closed re with
@@ -191,55 +194,55 @@ let rec to_string ?(top = false) ((last_group, named_groups) as groups) accu =
 	  add_const accu "?";
 	groups
 	  
-    | Possessive (loc, re) ->
+    | Possessive (_loc, re) ->
 	add_const accu "(?>";
 	let groups = to_string groups accu re in
 	add_const accu ")";
 	groups
 
-    | Lookahead (loc, positive, re) ->
+    | Lookahead (_loc, positive, re) ->
 	let start = if positive then "(?=" else "(?!" in
 	add_const accu start;
 	let groups = to_string groups accu re in
 	add_const accu ")";
 	groups
 
-    | Lookbehind (loc, positive, re) ->
+    | Lookbehind (_loc, positive, re) ->
 	let start = if positive then "(?<=" else "(?<!" in
 	add_const accu start;
 	let groups = to_string groups accu re in
 	add_const accu ")";
 	groups
 
-    | Bind (loc, re, name, conv) -> 
+    | Bind (_loc, re, name, conv) -> 
 	let last_group = succ last_group in
 	let named_groups = 
-	  add_new_group loc name conv last_group named_groups in
+	  add_new_group _loc name conv last_group named_groups in
 	add_const accu "(";
 	let groups = to_string (last_group, named_groups) accu re in
 	add_const accu ")";
 	groups
 
-    | Bind_pos (loc, name) -> 
+    | Bind_pos (_loc, name) -> 
 	let last_group = succ last_group in
-	let named_groups = add_new_pos loc name last_group named_groups in
+	let named_groups = add_new_pos _loc name last_group named_groups in
 	add_const accu "()";
 	(last_group, named_groups)
 
-    | Backref (loc, name) ->
+    | Backref (_loc, name) ->
 	(try
 	   match Named_groups.find name (fst named_groups) with
-	       [] -> Messages.invalid_backref loc name
+	       [] -> Messages.invalid_backref _loc name
 	     | [(_, n, conv)] -> add_const accu (sprintf "\\%i" n); groups
 	     | l -> 
 		 add_const accu (sprintf "(?:%s)"
 		   (String.concat "|"
 		      (List.map (fun (_, n, conv) -> sprintf "\\%d" n) l)));
 		 groups
-	 with Not_found -> Messages.invalid_backref loc name)
+	 with Not_found -> Messages.invalid_backref _loc name)
 
-    | Variable (loc, e) -> add_var accu e; groups
-    | Nocase_variable (loc, e) -> add_var_nocase accu e; groups
+    | Variable (_loc, e) -> add_var accu e; groups
+    | Nocase_variable (_loc, e) -> add_var_nocase accu e; groups
 	    
     | Closed ast -> 
 	let saved_named_groups = named_groups in
@@ -252,17 +255,17 @@ let rec to_string ?(top = false) ((last_group, named_groups) as groups) accu =
 open Constants
 
 let nocasify e =
-  let loc = MLast.loc_of_expr e in
+  let _loc = Ast.loc_of_expr e in
   <:expr< $uid: !mod_runtime$.nocase $e$ >>
 
 
-let make_get_re_noargs loc re_name re_args =
+let make_get_re_noargs _loc re_name re_args =
   let empty = <:expr< "" >> in
   let empty_args = List.map (fun (name, arg) -> (name, empty)) re_args in
-  Match.make_get_re loc re_name empty_args
+  Match.make_get_re _loc re_name empty_args
 
 
-let process_regexp loc ~sharing re re_name =
+let process_regexp _loc ~sharing re re_name =
   let accu = ref [] in
   let (last_group, named_groups) = 
     to_string ~top:true (0, (Named_groups.empty, Named_groups.empty)) 
@@ -272,7 +275,7 @@ let process_regexp loc ~sharing re re_name =
       ~quote_expr: <:expr< $uid: !mod_runtime$.quote_string >> 
       ~nocasify accu in
   let shared_id = shared re_name in
-  let get_re_noargs = make_get_re_noargs loc re_name re_args in
+  let get_re_noargs = make_get_re_noargs _loc re_name re_args in
   let postbindings =
     if sharing then
       [ shared_id, <:expr< Pcre.make_ovector $get_re_noargs$ >>;
@@ -286,7 +289,7 @@ let raises_exn = function
     <:expr< raise $exn$ >> -> true
   | _ -> false
 
-let string_match loc re_name get_re target substrings pos success failure =
+let string_match _loc re_name get_re target substrings pos success failure =
   let match_it = 
     <:expr< Pcre.exec ~rex:$get_re$ ~pos:$int:string_of_int pos$ $target$ >> in
 
@@ -303,21 +306,21 @@ let string_match loc re_name get_re target substrings pos success failure =
     try
       let $lid:substrings$ = 
 	try $match_it$
-	with [ Not_found -> $raise_exit loc$ ] in 
+	with [ Not_found -> $raise_exit _loc$ ] in 
       $success$
     with
-	[ $patt_exit loc$ -> $failure$ ] >>
+	[ $patt_exit _loc$ -> $failure$ ] >>
 
 
-let matched_group loc substrings n =
+let matched_group _loc substrings n =
   <:expr< Pcre.get_substring $lid:substrings$ $int:string_of_int n$ >>
 
-let matched_position loc substrings n =
+let matched_position _loc substrings n =
   <:expr< Pcre.get_substring_ofs $lid:substrings$ $int:string_of_int n$ >>
 
 
 
-let compile_regexp_general ~anchored ~mt loc re_args re_source =
+let compile_regexp_general ~anchored ~mt _loc re_args re_source =
   let default_flags = <:expr< [`DOLLAR_ENDONLY] >> in
   let anchored_flags = <:expr< [`ANCHORED; `DOLLAR_ENDONLY] >> in
   let flags = if anchored then anchored_flags else default_flags in
@@ -325,18 +328,22 @@ let compile_regexp_general ~anchored ~mt loc re_args re_source =
     <:expr< Pcre.regexp ~flags:$flags$ $e$ >> in
   match re_args with
       [] -> 
-	let re_string = Match.compute_re_string loc re_source in
+	let re_string = Match.compute_re_string _loc re_source in
 	compile_string re_string
     | _ ->
 	let key = 
 	  match re_args with
-	      [name, _] -> <:expr< $lid:name$ >>
+	      [name, _] -> <:expr< $id: <:ident< $lid:name$ >> $ >>
 	    | _ -> 
 		let expr_list = 
-		  List.map (fun (name, _) -> <:expr< $lid:name$ >>) re_args in
-		<:expr< ( $list: expr_list$ ) >> in
+		  List.map (
+		    fun (name, _) -> 
+		      <:expr< $id: <:ident< $lid:name$ >> $ >>
+		  ) re_args in
+		let tup = comma_expr_of_list _loc expr_list in
+		<:expr< ( $tup: tup$ ) >> in
 	let compile =
-	  let re_string = Match.compute_re_string loc re_source in
+	  let re_string = Match.compute_re_string _loc re_source in
 	  compile_string re_string in
 	    
 	let find = 
@@ -373,7 +380,7 @@ let compile_regexp_general ~anchored ~mt loc re_args re_source =
 let compile_regexp_match = compile_regexp_general ~anchored:true
 let compile_regexp_search = compile_regexp_general ~anchored:false
 
-let convert loc conv e =
+let convert _loc conv e =
   match conv with
       None -> e
     | Some f ->
@@ -390,18 +397,18 @@ let insert_bindings_poly
   ?(skip_empty_captures = false) (* for compatibility with 
 				    old versions of Pcre (before 2004-04-29) *)
   ?(get_fst = false)
-  make_expr loc substrings set e =
+  make_expr _loc substrings set e =
   Named_groups.fold
     (fun name l e -> 
        match l with
 	   [] -> assert false
-	 | (loc, _, _) :: _ ->
+	 | (_loc, _, _) :: _ ->
 	     let find_it =
 	       List.fold_right 
-		 (fun (loc, n, conv) accu ->
-		    let expr = make_expr loc substrings n in
+		 (fun (_loc, n, conv) accu ->
+		    let expr = make_expr _loc substrings n in
 		    match accu with
-			None -> Some (convert loc conv expr)
+			None -> Some (convert _loc conv expr)
 		      | Some e ->
 			  let result =
 			    if skip_empty_captures then
@@ -409,11 +416,11 @@ let insert_bindings_poly
 			      try
 				match $expr$ with 
 				    [ "" -> raise Not_found
-				    | s -> $convert loc conv <:expr< s >>$ ]
+				    | s -> $convert _loc conv <:expr< s >>$ ]
 			      with [ Not_found -> $e$ ] >>
 			    else
 			      <:expr< 
-			      try $convert loc conv expr$
+			      try $convert _loc conv expr$
 			      with [ Not_found -> $e$ ] >> in
 			  Some result)
 		 l
@@ -434,9 +441,9 @@ let insert_group_bindings =
 let insert_position_bindings = 
   insert_bindings_poly ~get_fst:true matched_position
 
-let insert_bindings loc substrings (group_bindings, position_bindings) e =
-  insert_group_bindings loc substrings group_bindings 
-    (insert_position_bindings loc substrings position_bindings e)
+let insert_bindings _loc substrings (group_bindings, position_bindings) e =
+  insert_group_bindings _loc substrings group_bindings 
+    (insert_position_bindings _loc substrings position_bindings e)
 
 
 let substrings_of_target target =
@@ -444,14 +451,14 @@ let substrings_of_target target =
       <:expr< $lid:s$ >> -> s ^ "_result"
     | _ -> assert false
 
-let match_and_bind loc re_name get_re target named_groups success failure =
+let match_and_bind _loc re_name get_re target named_groups success failure =
   let substrings = substrings_of_target target in
-  string_match loc re_name get_re target substrings 0 
-    (insert_bindings loc substrings named_groups success)
+  string_match _loc re_name get_re target substrings 0 
+    (insert_bindings _loc substrings named_groups success)
     failure
 
 let macro_replace_generic 
-  f loc (re_name : string) get_re target_name named_groups expr =
+  f _loc (re_name : string) get_re target_name named_groups expr =
   let target = <:expr< $lid:target_name$ >> in
   let substrings = substrings_of_target target in
   <:expr<
@@ -460,21 +467,21 @@ let macro_replace_generic
     ~rex:$get_re$ 
     ?pos
     ~subst:(fun $lid:substrings$ -> 
-	      $insert_bindings loc substrings named_groups expr$)
+	      $insert_bindings _loc substrings named_groups expr$)
     $target$ >>
 
 let macro_replace = macro_replace_generic "substitute_substrings"
 let macro_replace_first = macro_replace_generic "substitute_substrings_first"
 
 let macro_match ?(ignore_bindings = false)
-  loc re_name get_re target_name named_groups expr =
+  _loc re_name get_re target_name named_groups expr =
   let target = <:expr< $lid:target_name$ >> in
   let substrings = substrings_of_target target in
   let sv = shared_ovector re_name in
   let sg2 = subgroups2 re_name in
   let result =
     if ignore_bindings then expr
-    else insert_bindings loc substrings named_groups expr in
+    else insert_bindings _loc substrings named_groups expr in
   <:expr<
   fun ?(share = False) ?pos $lid:target_name$ ->
     let $lid:substrings$ =
@@ -493,38 +500,39 @@ let macro_match ?(ignore_bindings = false)
 
 let macro_search_first = macro_match
 
-let macro_filter loc re_name get_re target_name named_groups _ =
+let macro_filter _loc re_name get_re target_name named_groups _ =
   let expr = <:expr< True >> in
   let e = 
     macro_match ~ignore_bindings:true
-      loc re_name get_re target_name named_groups expr in
+      _loc re_name get_re target_name named_groups expr in
   <:expr< fun ?share ?pos x -> try $e$ ?share ?pos x 
                                with [ Not_found -> False ] >>
 
-let make_object loc (group_bindings, position_bindings) =
+let make_object _loc (group_bindings, position_bindings) =
   let all_ids = 
     Named_groups.list_keys group_bindings @ 
     Named_groups.list_keys position_bindings in
-  let ml =
-    List.map (fun id -> <:class_str_item< method $id$ = $lid:id$ >>)
-      all_ids in
-  MLast.ExObj (loc, None, ml)
+  let methods =
+    List.fold_right
+      (fun id accu -> <:class_str_item< method $id$ = $lid:id$ ; $accu$ >>)
+      all_ids <:class_str_item< >>in
+  <:expr< object $methods$ end >>
 
-let macro_capture loc re_name get_re target_name named_groups _ =
-  let expr = make_object loc named_groups in
-  let e = macro_match loc re_name get_re target_name named_groups expr in
+let macro_capture _loc re_name get_re target_name named_groups _ =
+  let expr = make_object _loc named_groups in
+  let e = macro_match _loc re_name get_re target_name named_groups expr in
   <:expr< fun ?share ?pos x -> try Some ($e$ ?share ?pos x)
                                with [ Not_found -> None ] >>
 
 let macro_function 
-  fun_name loc (re_name : string) get_re target_name named_groups expr =
+  fun_name _loc (re_name : string) get_re target_name named_groups expr =
   let target = <:expr< $lid:target_name$ >> in
   let substrings = substrings_of_target target in
   <:expr<
   $uid: !mod_runtime$.$lid:fun_name$
     $get_re$
     (fun $lid:substrings$ -> 
-       $insert_bindings loc substrings named_groups expr$)
+       $insert_bindings _loc substrings named_groups expr$)
   >>
 
 
@@ -532,11 +540,11 @@ let macro_search = macro_function "search"
 let macro_map = macro_function "map"
 let macro_collect = macro_function "collect"
 
-let macro_collectobj loc re_name get_re target_name named_groups _ = 
-  let e = make_object loc named_groups in
-  macro_function "collect" loc re_name get_re target_name named_groups e
+let macro_collectobj _loc re_name get_re target_name named_groups _ = 
+  let e = make_object _loc named_groups in
+  macro_function "collect" _loc re_name get_re target_name named_groups e
 
-let macro_split loc re_name get_re target_name named_groups _ =
+let macro_split _loc re_name get_re target_name named_groups _ =
   <:expr< $uid: !mod_runtime$.split $get_re$ >>
 
 open Select_lib

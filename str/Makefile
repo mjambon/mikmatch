@@ -1,4 +1,6 @@
-BINDIR = $(shell dirname `which ocaml`)
+ifndef BINDIR
+  BINDIR = $(shell dirname `which ocaml`)
+endif
 
 SOURCES = \
   mm_util.ml \
@@ -10,6 +12,8 @@ SOURCES = \
 
 RESULT = micmatch_str
 
+OCAMLFLAGS = -dtypes
+
 OCAMLLDFLAGS = \
   messages.cmo charset.cmo \
   constants.cmo \
@@ -19,7 +23,6 @@ OCAMLLDFLAGS = \
 INCDIRS = ../common
 
 USE_CAMLP4 = yes
-OCAMLFLAGS = -dtypes
 
 LIBINSTALL_FILES := \
   pa_micmatch_str.cma pa_micmatch_str.cmo pa_micmatch_str.cmi \

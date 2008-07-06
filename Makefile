@@ -58,6 +58,7 @@ clean::
 
 
 VERSION = $(shell ./VERSION)
+export VERSION
 
 # Only for developers; requires camlmix, hevea, pdflatex 
 # and maybe other things.
