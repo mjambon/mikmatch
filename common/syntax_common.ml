@@ -15,7 +15,11 @@ let regexp = Gram.Entry.mk "regexp";;
 let regexp_match_case = Gram.Entry.mk "regexp_match_case";;
 let range = Gram.Entry.mk "range";;
 
-let seq _loc e = <:expr< do { $e$ } >>
+let seq _loc e = 
+  match e with
+      <:expr< $_$ ; $_$ >> -> <:expr< do { $e$ } >>
+    | _ -> e
+
 
 let extend_common () =
   (try DELETE_RULE Gram patt: LIDENT END
@@ -99,7 +103,9 @@ EXTEND Gram
 
     | "let"; o = OPT "rec"; b = binding; "in"; e2 = sequence ->
 	let e = 
-	  handle_let_bindings _loc (o <> None) (list_of_binding b) e2 in
+	  handle_let_bindings _loc (o <> None) 
+	    (list_of_binding b) 
+	    (seq _loc e2) in
 	<:str_item< $exp:e$ >>
 
     | "let"; LIDENT "view"; name = UIDENT; "="; e1 = expr ->
@@ -215,32 +221,29 @@ let extend_regular () =
   extend_common ();
   (try
      DELETE_RULE Gram
-       str_item: "let"; OPT "rec"; LIST1 let_binding SEP "and"
-     END
-   with Not_found -> ());
-  (try
-     DELETE_RULE Gram
        expr: "function"; match_case
      END
-   with Not_found -> ());
+   with Not_found -> 
+     Messages.cannot_delete_rule "(reg 1)");
+
+  (try
+     DELETE_RULE Gram
+       expr: "match"; sequence; "with"; match_case
+     END
+   with Not_found -> 
+     Messages.cannot_delete_rule "(reg 2)");
 
   EXTEND Gram
   expr: LEVEL "top" [
-    [ "match"; target = expr; "with"; OPT "|";
+    [ "match"; target = sequence; "with"; OPT "|";
       cases = LIST1 regexp_match_case SEP "|" -> 
-	output_match _loc target cases
+	output_match _loc (seq _loc target) cases
     | "try"; e = expr; "with"; OPT "|";
       cases = LIST1 regexp_match_case SEP "|" -> 
 	output_try _loc e cases
     | "function"; OPT "|"; cases = LIST1 regexp_match_case SEP "|" ->
 	output_function _loc cases ]
   ];
-(*
-  str_item: LEVEL "top" [
-    [ "let"; o = OPT "rec"; l = LIST1 let_binding SEP "and" ->
-	handle_value_bindings _loc (o <> None) (List.map pair_of_binding l) ]
-  ];
-*)
   END
 
 

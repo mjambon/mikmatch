@@ -22,6 +22,7 @@ RE word = letter+
 
 (* Doesn't work. Don't know how to make it work. *)
 (* Testing the Camlp4 support for stream parsers *)
+
 let _ = match Stream.of_list [] with parser [< >] -> ()
 
 
