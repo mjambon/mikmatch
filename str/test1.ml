@@ -2,6 +2,9 @@ open Printf
 
 let _ = function RE "" -> ()
 
+let x = 1 in ();;
+let / alpha / = "a" in ();;
+
 (* Definition of regular expressions for further use *)
 RE space = [' ' '\t' '\n' '\r']
 RE not_space = _ # space

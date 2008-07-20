@@ -94,6 +94,19 @@ let pair_of_binding = function
       failure _loc "Failed assertion in Mm_util.pair_of_binding"
 
 
+let list_of_binding b =
+  let rec aux b l =
+    match b with
+	<:binding< $b1$ and $b2$ >> -> aux b1 (aux b2 l)
+      | <:binding< >> -> l
+      | <:binding< $p$ = $e$ >> -> (p, e) :: l
+      | <:binding< $anti: _ $ >> ->
+	failure (Ast.loc_of_binding b)
+	  "Antiquotations for let bindings are not supported by micmatch"
+  in
+  aux b []
+
+
 let match_case_of_tuple _loc (p, w, e) =
   debug "match_case_of_tuple";
   match w with

@@ -20,23 +20,28 @@ let seq _loc e = <:expr< do { $e$ } >>
 let extend_common () =
   (try DELETE_RULE Gram patt: LIDENT END
    with Not_found -> ());
+
   (try 
      DELETE_RULE Gram 
        expr: "let"; opt_rec; binding; "in"; expr LEVEL ";" 
      END
-   with Not_found -> ());
-  
-  (try 
-     DELETE_RULE Gram 
-       expr: "let"; opt_rec; binding; "in"; expr
-     END
-   with Not_found -> ());
-  
+   with Not_found -> 
+     Messages.cannot_delete_rule "(1)");
+
   (try
      DELETE_RULE Gram
        str_item: "let"; opt_rec; binding; "in"; expr
      END
-   with Not_found -> ());
+   with Not_found -> 
+     Messages.cannot_delete_rule "(2)");
+
+  (try
+     DELETE_RULE Gram
+       str_item: "let"; opt_rec; binding
+     END
+   with Not_found -> 
+     Messages.cannot_delete_rule "(3)");
+
 
 EXTEND Gram
   GLOBAL: 
@@ -69,10 +74,9 @@ EXTEND Gram
   ];
 
   expr: LEVEL "top" [
-    [ "let"; o = OPT "rec"; l = LIST1 let_binding SEP "and"; "in";
-        e2 = sequence ->
-	  handle_let_bindings _loc (o <> None) (List.map pair_of_binding l)
-	    (seq _loc e2) ]
+    [ "let"; o = OPT "rec"; b = binding; "in"; e2 = sequence ->
+	handle_let_bindings _loc (o <> None) (list_of_binding b)
+	  (seq _loc e2) ]
   ];
 
   expr: LEVEL "top" [
@@ -89,26 +93,25 @@ EXTEND Gram
   ];
 
   str_item: LEVEL "top" [
-    [ "let"; o = OPT "rec"; l = LIST1 let_binding SEP "and"; "in";
-        e2 = expr ->
-	  let e = 
-	    handle_let_bindings _loc (o <> None) 
-	      (List.map pair_of_binding l) e2 in
-	  <:str_item< $exp:e$ >> ]
-  ];
+    [
+      "let"; o = OPT "rec"; b = binding ->
+	handle_value_bindings _loc (o <> None) (list_of_binding b)
 
-  str_item: LEVEL "top" [
-    [ "let"; LIDENT "view"; name = UIDENT; "="; e1 = expr ->
-	<:str_item< value $lid:"view_" ^ name$ = $e1$ >> ]
-  ];
+    | "let"; o = OPT "rec"; b = binding; "in"; e2 = sequence ->
+	let e = 
+	  handle_let_bindings _loc (o <> None) (list_of_binding b) e2 in
+	<:str_item< $exp:e$ >>
 
-  str_item: LEVEL "top" [
-    [ "let"; "try"; o = OPT "rec"; l = LIST1 let_binding SEP "and"; 
+    | "let"; LIDENT "view"; name = UIDENT; "="; e1 = expr ->
+	<:str_item< value $lid:"view_" ^ name$ = $e1$ >>
+
+    | "let"; "try"; o = OPT "rec"; b = binding; 
       "in"; e2 = sequence;
       "with"; pwel = LIST1 lettry_case SEP "|" ->
 	let e = 
-	  let_try_in _loc o (List.map pair_of_binding l) (seq _loc e2) pwel in
-	<:str_item< $exp:e$ >> ]
+	  let_try_in _loc o (list_of_binding b) (seq _loc e2) pwel in
+	<:str_item< $exp:e$ >> 
+    ]
   ];
 
   lettry_case: [ 
@@ -232,41 +235,13 @@ let extend_regular () =
     | "function"; OPT "|"; cases = LIST1 regexp_match_case SEP "|" ->
 	output_function _loc cases ]
   ];
-
+(*
   str_item: LEVEL "top" [
     [ "let"; o = OPT "rec"; l = LIST1 let_binding SEP "and" ->
 	handle_value_bindings _loc (o <> None) (List.map pair_of_binding l) ]
   ];
+*)
   END
-
-
-let extend_revised () =
-  extend_common ();
-
-  (try
-     DELETE_RULE Gram
-       str_item: "value"; OPT "rec"; LIST1 let_binding SEP "and"
-     END
-   with Not_found -> ());
-
-  EXTEND Gram
-  expr: LEVEL "top" [
-    [ "match"; target = expr; "with"; "[";
-      cases = LIST1 regexp_match_case SEP "|"; "]" -> 
-	output_match _loc target cases
-    | "try"; e = expr; "with"; "[";
-      cases = LIST1 regexp_match_case SEP "|"; "]" -> 
-	output_try _loc e cases
-    | "fun"; "["; cases = LIST1 regexp_match_case SEP "|"; "]" ->
-        output_function _loc cases ]
-  ];
-
-  str_item: LEVEL "top" [
-    [ "value"; o = OPT "rec"; l = LIST1 let_binding SEP "and" ->
-	handle_value_bindings _loc (o <> None) (List.map pair_of_binding l) ]
-  ];
-  END
-
 
 
 let () =

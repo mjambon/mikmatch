@@ -120,7 +120,7 @@ more-tests:
 	camlp4o ./pa_micmatch_pcre.cma -printer o -direct test.ml > test.ppo
 	ocamlopt \
 		-pp 'camlp4o ./pa_micmatch_pcre.cma' \
-		-I $(PCRE_DIR) pcre.cmxa micmatch_pcre.cmxa \
+		-I $(PCRE_DIR) pcre.cmxa run_micmatch_pcre.cmxa \
 		test.ml -o test
 	./test
 

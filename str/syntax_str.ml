@@ -30,7 +30,9 @@ EXTEND Gram
 END;;
 
 let extend_regular () = extend_common ()
+(*
 let extend_revised () = extend_common ()
+*)
 
 let _ =
   select_lib Str_lib.lib;

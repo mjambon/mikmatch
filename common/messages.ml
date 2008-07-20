@@ -72,3 +72,5 @@ let misplaced_pattern p =
     ("patterns of this kind cannot appear in this context. \
       Use match ... with if you are unsure.")
 
+let cannot_delete_rule name =
+  eprintf "Warning: Cannot delete rule %s\n%!" name

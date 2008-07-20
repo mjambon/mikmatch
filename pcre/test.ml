@@ -19,11 +19,11 @@ RE word = letter+
    function ...
 *)
 
-(*
+
 (* Doesn't work. Don't know how to make it work. *)
 (* Testing the Camlp4 support for stream parsers *)
 let _ = match Stream.of_list [] with parser [< >] -> ()
-*)
+
 
 let test expected a b c =
   printf "[case %i] " expected; flush stdout;
@@ -338,7 +338,10 @@ let _ =
       (RE "b") | (RE "c") | (RE "a") -> ()
     | _ -> failwith "test failed"
 
-(*
+let () = () in ();;
+
+
+
 (* General syntax for local exception handling (let try ... in ... with ...) *)
 let _ =
   try
@@ -351,7 +354,7 @@ let _ =
 ;;
 
 let RE (_* as x) = "hello" in assert ("" <> "hello");;
-*)
+
 
 (* Shortcut syntax *)
 let _ =
@@ -370,10 +373,11 @@ let _ =
   with Exit -> 
     print_endline "OK for local exception handling (RE)"
 
-(* Similar tests for str_item's let in *)
-let /alpha+ space+ (alpha+ as x)/ = "xyz   abc  " in (* delete or extend "sequence" entry *) 
+let /alpha+ space+ (alpha+ as x)/ = "xyz   abc  " in
 assert (x = "abc");;
 
+
+(* Similar tests for str_item's let in *)
 let try /alpha+ space+ (alpha+ as x)/ = "" in 
   assert false
 with Match_failure _ -> print_endline "OK for str_item let-try-in-with";;
