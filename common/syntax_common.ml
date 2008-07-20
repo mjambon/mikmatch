@@ -15,18 +15,26 @@ let regexp = Gram.Entry.mk "regexp";;
 let regexp_match_case = Gram.Entry.mk "regexp_match_case";;
 let range = Gram.Entry.mk "range";;
 
+let seq _loc e = <:expr< do { $e$ } >>
+
 let extend_common () =
   (try DELETE_RULE Gram patt: LIDENT END
    with Not_found -> ());
   (try 
      DELETE_RULE Gram 
-       expr: "let"; OPT "rec"; binding; "in"; expr LEVEL ";" 
+       expr: "let"; opt_rec; binding; "in"; expr LEVEL ";" 
+     END
+   with Not_found -> ());
+  
+  (try 
+     DELETE_RULE Gram 
+       expr: "let"; opt_rec; binding; "in"; expr
      END
    with Not_found -> ());
   
   (try
      DELETE_RULE Gram
-       str_item: "let"; OPT "rec"; binding; "in"; expr
+       str_item: "let"; opt_rec; binding; "in"; expr
      END
    with Not_found -> ());
 
@@ -62,21 +70,22 @@ EXTEND Gram
 
   expr: LEVEL "top" [
     [ "let"; o = OPT "rec"; l = LIST1 let_binding SEP "and"; "in";
-        e2 = expr LEVEL "top" ->
-	  handle_let_bindings _loc (o <> None) (List.map pair_of_binding l) e2 ]
+        e2 = sequence ->
+	  handle_let_bindings _loc (o <> None) (List.map pair_of_binding l)
+	    (seq _loc e2) ]
   ];
 
   expr: LEVEL "top" [
     [ "let"; LIDENT "view"; 
-      name = UIDENT; "="; e1 = expr; "in"; e2 = expr ->
-	<:expr< let $lid:"view_" ^ name$ = $e1$ in $e2$ >> ]
+      name = UIDENT; "="; e1 = expr; "in"; e2 = sequence ->
+	<:expr< let $lid:"view_" ^ name$ = $e1$ in $seq _loc e2$ >> ]
   ];
 
   expr: LEVEL "top" [
     [ "let"; "try"; o = OPT "rec"; l = LIST1 let_binding SEP "and"; 
-      "in"; e2 = expr LEVEL "top";
+      "in"; e2 = sequence;
       "with"; pwel = LIST1 lettry_case SEP "|" ->
-	let_try_in _loc o (List.map pair_of_binding l) e2 pwel ]
+	let_try_in _loc o (List.map pair_of_binding l) (seq _loc e2) pwel ]
   ];
 
   str_item: LEVEL "top" [
@@ -95,23 +104,25 @@ EXTEND Gram
 
   str_item: LEVEL "top" [
     [ "let"; "try"; o = OPT "rec"; l = LIST1 let_binding SEP "and"; 
-      "in"; e2 = expr;
+      "in"; e2 = sequence;
       "with"; pwel = LIST1 lettry_case SEP "|" ->
-	let e = let_try_in _loc o (List.map pair_of_binding l) e2 pwel in
+	let e = 
+	  let_try_in _loc o (List.map pair_of_binding l) (seq _loc e2) pwel in
 	<:str_item< $exp:e$ >> ]
   ];
 
   lettry_case: [ 
     [ p = patt; 
       w = OPT [ "when"; e = expr -> e ]; "->"; 
-      e = expr -> match_case_of_tuple _loc (p, w, <:expr< fun () -> $e$ >>) ]
+      e = sequence -> 
+	match_case_of_tuple _loc (p, w, <:expr< fun () -> $seq _loc e$ >>) ]
   ];
 
   regexp_match_case: [ 
     [ x1 = patt; 
       w = OPT [ "when"; e = expr -> e ]; "->"; 
-      x2 = expr ->
-        (_loc, x1, w, x2) ]
+      x2 = sequence ->
+        (_loc, x1, w, seq _loc x2) ]
   ];
 
   regexp: [

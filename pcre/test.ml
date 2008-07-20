@@ -371,7 +371,7 @@ let _ =
     print_endline "OK for local exception handling (RE)"
 
 (* Similar tests for str_item's let in *)
-let /alpha+ space+ (alpha+ as x)/ = "xyz   abc  " in 
+let /alpha+ space+ (alpha+ as x)/ = "xyz   abc  " in (* delete or extend "sequence" entry *) 
 assert (x = "abc");;
 
 let try /alpha+ space+ (alpha+ as x)/ = "" in 
