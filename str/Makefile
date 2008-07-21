@@ -10,7 +10,7 @@ SOURCES = \
   syntax_common.ml \
   syntax_str.ml
 
-RESULT = micmatch_str
+RESULT = mikmatch_str
 
 OCAMLFLAGS = -dtypes
 
@@ -25,27 +25,27 @@ INCDIRS = ../common
 USE_CAMLP4 = yes
 
 LIBINSTALL_FILES := \
-  pa_micmatch_str.cma pa_micmatch_str.cmo pa_micmatch_str.cmi \
-  run_micmatch_str.cma run_micmatch_str.cmo run_micmatch_str.cmi \
-  micmatch.cmi micmatch.cmo micmatch.cmx micmatch.mli \
-  run_micmatch_str.cmxa run_micmatch_str.cmx \
-  run_micmatch_str.a run_micmatch_str.o
+  pa_mikmatch_str.cma pa_mikmatch_str.cmo pa_mikmatch_str.cmi \
+  run_mikmatch_str.cma run_mikmatch_str.cmo run_mikmatch_str.cmi \
+  mikmatch.cmi mikmatch.cmo mikmatch.cmx mikmatch.mli \
+  run_mikmatch_str.cmxa run_mikmatch_str.cmx \
+  run_mikmatch_str.a run_mikmatch_str.o
 
 .PHONY: default force all links 
 
-default: links pa_lib misc
+default: version links pa_lib misc
 force:
 	touch $(SOURCES)
 	$(MAKE)
 
 all:
 
-links: micmatch.mli micmatch.ml match.ml syntax_common.ml mm_util.ml \
+links: mikmatch.mli mikmatch.ml match.ml syntax_common.ml mm_util.ml \
 	global_def.mli global_def.ml
 
-micmatch.mli: ../common/micmatch.mli
+mikmatch.mli: ../common/mikmatch.mli
 	ln -s $< $@
-micmatch.ml: ../common/micmatch.ml
+mikmatch.ml: ../common/mikmatch.ml
 	ln -s $< $@
 syntax_common.ml: ../common/syntax_common.ml
 	ln -s $< $@
@@ -61,24 +61,25 @@ global_def.ml: ../common/global_def.ml
 .PHONY: pa_lib install uninstall version topinstall misc
 
 pa_lib:
-	$(MAKE) RESULT=pa_micmatch_str pabc bcl
+	$(MAKE) RESULT=pa_mikmatch_str pabc bcl
 
-install: libinstall topinstall
+#install: libinstall topinstall
+install: libinstall
 uninstall: libuninstall
-	rm -f $(BINDIR)/micmatch_str.top $(BINDIR)/micmatch_str
+	rm -f $(BINDIR)/mikmatch_str.top $(BINDIR)/mikmatch_str
 
 version:
-	sed -e "s/VERSION/$VERSION" < META.template > META
+	sed -e "s/VERSION/$(VERSION)/" < META.template > META
 
 topinstall:
-	install -m 0755 micmatch_str.top micmatch_str $(BINDIR)
+	install -m 0755 mikmatch_str.top mikmatch_str $(BINDIR)
 
 misc:
-	ocamlc -c micmatch.mli
-	ocamlc -a -o run_micmatch_str.cma \
-		micmatch.ml run_micmatch_str.ml
-	ocamlopt -a -o run_micmatch_str.cmxa \
-		micmatch.ml run_micmatch_str.ml
+	ocamlc -c mikmatch.mli
+	ocamlc -a -o run_mikmatch_str.cma \
+		mikmatch.ml run_mikmatch_str.ml
+	ocamlopt -a -o run_mikmatch_str.cmxa \
+		mikmatch.ml run_mikmatch_str.ml
 
 
 .PHONY: test1 test-install
@@ -86,22 +87,22 @@ test: test1
 
 # (preinstall test)
 test1:
-	camlp4o ./pa_micmatch_str.cma -printer o test1.ml > test1.ppo
-	ocamlopt -pp 'camlp4o ./pa_micmatch_str.cma' \
+	camlp4o ./pa_mikmatch_str.cma -printer o test1.ml > test1.ppo
+	ocamlopt -pp 'camlp4o ./pa_mikmatch_str.cma' \
 		str.cmxa unix.cmxa \
-		run_micmatch_str.cmxa \
+		run_mikmatch_str.cmxa \
 		test1.ml -o test1
 	./test1
-#	ocamlmktop -o micmatch_str.test -I +camlp4 -I . camlp4o.cma \
-#		pa_micmatch_str.cma str.cma unix.cma run_micmatch_str.cma
-#	./micmatch_str.test test1.ml
+#	ocamlmktop -o mikmatch_str.test -I +camlp4 -I . camlp4o.cma \
+#		pa_mikmatch_str.cma str.cma unix.cma run_mikmatch_str.cma
+#	./mikmatch_str.test test1.ml
 
 
 # Compilation with ocamlfind (postinstall test)
 test-install:
 	ocamlfind ocamlopt \
 		-syntax camlp4o \
-		-package micmatch_str\
+		-package mikmatch_str\
 		-linkpkg \
 		test1.ml -o test1_inst
 	./test1_inst
@@ -109,7 +110,7 @@ test-install:
 
 TRASH = \
  *~ *.ppo *.cm[ioxa] *.cmxa *.o *.a *.top \
- *.test test1 test1.more test1_mt micmatch_str micmatch_str.ml
+ *.test test1 test1.more mikmatch_str mikmatch_str.ml
 
 
 OCAMLMAKEFILE = ../OCamlMakefile

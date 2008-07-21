@@ -1,4 +1,4 @@
-exception Micmatch_exit
+exception Mikmatch_exit
 
 let nocase s =
   let len = String.length s in

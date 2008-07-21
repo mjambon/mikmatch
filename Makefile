@@ -1,4 +1,4 @@
-.PHONY: defaults install uninstall all opt micmatch-pcre micmatch-str \
+.PHONY: defaults install uninstall all opt mikmatch-pcre mikmatch-str \
         common install-str install-pcre uninstall-str uninstall-pcre \
         backup clean archive pcre str
 
@@ -12,7 +12,7 @@ export PREFIX
 export BINDIR
 
 
-default: micmatch-pcre
+default: mikmatch-pcre
 install: install-pcre
 uninstall: uninstall-pcre
 
@@ -24,8 +24,8 @@ opt: common
 
 ## end of GODIVA targets
 
-micmatch-pcre: common pcre
-micmatch-str: common str
+mikmatch-pcre: common pcre
+mikmatch-str: common str
 
 common:
 	cd common && $(MAKE)
@@ -47,7 +47,7 @@ uninstall-pcre:
 
 
 backup:
-	scp -r . $$BACKUP_DIR/micmatch/
+	scp -r . $$BACKUP_DIR/mikmatch/
 
 clean::
 	cd doc && $(MAKE) clean
@@ -67,24 +67,24 @@ archive:
 	cd str && $(MAKE) version
 	cd pcre && $(MAKE) version
 	cd doc && $(MAKE)
-	rm -rf /tmp/micmatch /tmp/micmatch-$(VERSION) && \
-	 	cp -r . /tmp/micmatch && \
-		cd /tmp/micmatch && \
+	rm -rf /tmp/mikmatch /tmp/mikmatch-$(VERSION) && \
+	 	cp -r . /tmp/mikmatch && \
+		cd /tmp/mikmatch && \
 			$(MAKE) clean && \
-			rm -f *~ micmatch*.tar* && \
-		cd /tmp && cp -r micmatch micmatch-$(VERSION) && \
-		tar czf micmatch.tar.gz micmatch && \
-		tar cjf micmatch.tar.bz2 micmatch && \
-		tar czf micmatch-$(VERSION).tar.gz micmatch-$(VERSION) && \
-		tar cjf micmatch-$(VERSION).tar.bz2 micmatch-$(VERSION)
-	mv /tmp/micmatch.tar.gz /tmp/micmatch.tar.bz2 .
-	mv /tmp/micmatch-$(VERSION).tar.gz /tmp/micmatch-$(VERSION).tar.bz2 .
-	cp micmatch.tar.gz micmatch.tar.bz2 $$WWW/
-	cp micmatch-$(VERSION).tar.gz micmatch-$(VERSION).tar.bz2 $$WWW/
-	cp LICENSE $$WWW/micmatch-license.txt
-	cp VERSION $$WWW/micmatch-version
-	cp Changes $$WWW/micmatch-changes.txt
-	cp doc/micmatch-manual.pdf $$WWW
-	cp doc/micmatch-manual.html $$WWW/micmatch-manual-nocounter.html
+			rm -f *~ mikmatch*.tar* && \
+		cd /tmp && cp -r mikmatch mikmatch-$(VERSION) && \
+		tar czf mikmatch.tar.gz mikmatch && \
+		tar cjf mikmatch.tar.bz2 mikmatch && \
+		tar czf mikmatch-$(VERSION).tar.gz mikmatch-$(VERSION) && \
+		tar cjf mikmatch-$(VERSION).tar.bz2 mikmatch-$(VERSION)
+	mv /tmp/mikmatch.tar.gz /tmp/mikmatch.tar.bz2 .
+	mv /tmp/mikmatch-$(VERSION).tar.gz /tmp/mikmatch-$(VERSION).tar.bz2 .
+	cp mikmatch.tar.gz mikmatch.tar.bz2 $$WWW/
+	cp mikmatch-$(VERSION).tar.gz mikmatch-$(VERSION).tar.bz2 $$WWW/
+	cp LICENSE $$WWW/mikmatch-license.txt
+	cp VERSION $$WWW/mikmatch-version
+	cp Changes $$WWW/mikmatch-changes.txt
+	cp doc/mikmatch-manual.pdf $$WWW
+	cp doc/mikmatch-manual.html $$WWW/mikmatch-manual-nocounter.html
 	cp -r doc/mmodoc/ $$WWW
-	touch -c $$WWW/micmatch.html.mlx
+	touch -c $$WWW/mikmatch.html.mlx

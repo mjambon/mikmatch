@@ -5,14 +5,14 @@ open Camlp4.PreCast
 let dummy_loc = Loc.ghost
 
 let debug_mode = ref false
-let reserved_prefix = if !debug_mode then "_" else "__micmatch_"
+let reserved_prefix = if !debug_mode then "_" else "__mikmatch_"
 let uppercase_prefix = "C" ^ reserved_prefix
 let typevar_prefix = "a" ^ reserved_prefix
 
 let mod_runtime = ref ""
 let mod_runtime_mt = ref ""
 
-let exn_exit = "Micmatch_exit"
+let exn_exit = "Mikmatch_exit"
 
 let any_exn = reserved_prefix ^ "any_exn"
 let any_target = reserved_prefix ^ "any_target"

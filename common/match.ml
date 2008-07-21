@@ -175,7 +175,7 @@ let posix_regexps =
     Charset.Posix.all
 
 
-module Micmatch_regexps =
+module Mikmatch_regexps =
 struct
   let _loc = dummy_loc
   let set x = Characters (_loc, x)
@@ -277,13 +277,13 @@ let fill_tbl tbl l =
 
 let init_named_regexps () =
   fill_tbl named_regexps posix_regexps;
-  fill_tbl named_regexps Micmatch_regexps.all;
+  fill_tbl named_regexps Mikmatch_regexps.all;
   fill_tbl named_regexps !(lib).predefined_regexps
 
 let reset_named_regexps () =
   Hashtbl.clear named_regexps;
   fill_tbl named_regexps posix_regexps;
-  fill_tbl named_regexps Micmatch_regexps.all;
+  fill_tbl named_regexps Mikmatch_regexps.all;
   fill_tbl named_regexps !(lib).predefined_regexps
 
 let select_lib x =

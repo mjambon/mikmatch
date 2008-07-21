@@ -203,7 +203,7 @@ struct
 (* Filename globbing utility *)
 
 (*
-  Examples of use with micmatch:
+  Examples of use with mikmatch:
 
   let ml_files = list [FILTER _* ".ml" "i"? eos]
   let trash_files = 

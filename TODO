@@ -1,6 +1,3 @@
-General:
-- Port to the new camlp4 -> micmatch-redux
-
 Documentation:
 - mention all the rules which are overridden, since it may 
 cause incompatibilities with other extensions which do the same
@@ -8,19 +5,9 @@ cause incompatibilities with other extensions which do the same
 Compatibility:
 - (maybe) add an option for using another keyword than "match", and 
 avoid to have to delete existing rules
-- see if it is possible to use the features of Declare_once without 
-inserting a new level at the top (otherwise micmatch has to be loaded 
-last or other syntax extensions are forced to specify LEVEL "top" for their 
-extensions of the str_item entry)
 
 Features:
 - port to Str the macros which already exist for PCRE (if possible)
-
-Packaging:
-- it would be nice to detach regexp-pp, and detach the internal tools
-  from regexp-pp that are used by micmatch (sent request to the author
-  2005-01-28). Update 2008-05-05: micmatch-redux will most likely
-  remove the dependency on regexp-pp.
 
 Possible optimizations:
 - computation of only the substrings that are effectively used (or at 

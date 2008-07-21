@@ -13,48 +13,53 @@
 \usepackage{url} 
 \usepackage{ocamldoc}
 
-\title{Micmatch Version~## Sys.command "../VERSION" ##\\
+\title{Mikmatch Version~## Sys.command "../VERSION" ##\\
 Reference Manual}
 \author{Martin Jambon}
-\date{October 19, 2005}
+\date{July 21, 2008}
 
 \setcounter{secnumdepth}{5}
 \setcounter{tocdepth}{4}
+
+\newcommand{\toplevelwarning}[0]{%
+{\footnotesize [toplevel support not available in Camlp4 3.10]}%
+}
+
 
 \begin{document}
 
 \maketitle
 
 This manual is available online as a single HTML file at\\
-\url{http://martin.jambon.free.fr/micmatch-manual.html}\\
+\url{http://martin.jambon.free.fr/mikmatch-manual.html}\\
 and as a PDF document at\\
-\url{http://martin.jambon.free.fr/micmatch-manual.pdf}.\\
-The home page of Micmatch is:\\
+\url{http://martin.jambon.free.fr/mikmatch-manual.pdf}.\\
+The home page of Mikmatch is:\\
 \url{http://martin.jambon.free.fr/micmatch.html}
 
 \tableofcontents
 
 \section{Introduction}
 
-Micmatch is an extension of the syntax of the Objective Caml
+Mikmatch is an extension of the syntax of the Objective Caml
 programming language (OCaml).
 Its purpose it to make the use of regular expressions easier and more
 generally to provide a set of tools for using OCaml as a
 powerful scripting language.
-Micmatch believes that regular expressions are just like any other
+Mikmatch believes that regular expressions are just like any other
 program and deserve better than a cryptic sequence of symbols placed
 in a string of a master program.
 
-Micmatch currently supports two different libraries that implement
+Mikmatch currently supports two different libraries that implement
 regular expressions: Str which comes with the original distribution of
 OCaml and PCRE-OCaml which is an interface to PCRE (Perl Compatible
 Regular Expressions) for OCaml.
-These two flavors will be referred as Micmatch\_str and
-Micmatch\_pcre.
+These two flavors will be referred as Mikmatch\_str and
+Mikmatch\_pcre.
 They share a large number of syntaxic features, 
-but Micmatch\_pcre provides several macros that cannot be implemented
-safely in Micmatch\_str. Therefore, it is recommended to use
-Micmatch\_pcre.
+but Mikmatch\_pcre provides several macros that cannot be implemented
+safely in Mikmatch\_str. Therefore, it is recommended to use
+Mikmatch\_pcre.
 
 
 \section{Language}
@@ -190,6 +195,10 @@ OCaml expression of type string. Parentheses will be needed around
 \textit{expr} if it is a function application, or any construct of
 equivalent or lower precedence (see the Objective Caml manual, chapter
 ``The Objective Caml language'', section ``Expressions'').
+Matching such patterns is not thread-safe in any of the current 
+implementations. 
+Expressions that contain 
+@ patterns should be protected against concurrent accesses.
 
 
 \end{itemize}
@@ -219,7 +228,7 @@ Their definition is given in table~\ref{posix-classes}.
 \begin{table}
 \caption{\label{posix-classes}
 POSIX character classes and their
-definition in the Micmatch syntax}
+definition in the Mikmatch syntax}
 \tt
 \begin{tabular}{l}
 RE lower = \verb!['a'-'z']!\\
@@ -240,7 +249,7 @@ RE space = \verb![blank "\n\x0B\x0C\r"]!\\
 \subsubsection{More predefined patterns}
 
 Some named regexps are predefined and available in
-every implementation of Micmatch. These are the following:
+every implementation of Mikmatch. These are the following:
 \begin{itemize}
 \item \texttt{int}: matches an integer (see
 table~\ref{predefined-regexps}).
@@ -254,7 +263,7 @@ produced with the OCaml standard function \texttt{string\_of\_float}.
 
 \begin{table}
 \caption{\label{predefined-regexps}
-Predefined regexps in Micmatch}
+Predefined regexps in Mikmatch}
 \tt
 \begin{verbatim}
 RE int = ["-+"]? ( "0" ( ["xX"] xdigit+
@@ -275,7 +284,7 @@ RE float =
 
 \subsubsection{Regexps and match/function/try constructs}
 
-In Micmatch, regular expressions can be used to match strings instead
+In Mikmatch, regular expressions can be used to match strings instead
 of the regular patterns. In this case, the regular expression must
 be preceded by the \textbf{RE} keyword, or placed between slashes
 (\textbf{/}\dots\textbf{/}). Both notations are equivalent.
@@ -432,7 +441,7 @@ that match a pattern which is known in advance:\\
 
 Global declarations also support this shortcut:\\
 \textbf{let /}\textit{regexp}\textbf{/} \textbf{=} \textit{expr}\\
-Example:
+Example \toplevelwarning:
 \begin{verbatim}
 # Sys.ocaml_version;;
 - : string = "3.08.3"
@@ -494,14 +503,15 @@ previously in the sequence.
 During the matching process, it is not possible that a backreference
 refers to a named group which is not matched.
 In the following example, we 
-extract the repeated pattern \texttt{abc} from \texttt{abcabc}:
+extract the repeated pattern \texttt{abc} from \texttt{abcabc}
+\toplevelwarning:
 \begin{verbatim}
 # match "abcabc" with RE _* as x !x -> x;;
 - : string = "abc"
 \end{verbatim}
 
 
-\subsubsection{Specificities of Micmatch\_str}
+\subsubsection{Specificities of Mikmatch\_str}
 
 Backreferences as described previously (section~\ref{backref}) are
 supported.
@@ -517,10 +527,10 @@ string, or just before a newline character).
 \item \underline{bnd} matches word boundaries.
 \end{itemize}
 
-\subsubsection{Specificities of Micmatch\_pcre}
+\subsubsection{Specificities of Mikmatch\_pcre}
 
 This is currently the version which is used by the 
-\verb$micmatch$ command.
+\verb$mikmatch$ command.
 
 \paragraph{Matching order}
 
@@ -548,7 +558,7 @@ more repetition.
 The lazy behavior is turned on by placing the keyword \verb$Lazy$ 
 after the quantifier. This is the equivalent of Perl's quantifiers
 \verb$*?$, \verb$+?$, \verb$??$ and \verb${$\dots\verb$}?$.
-For instance, compare the following behaviors:
+For instance, compare the following behaviors \toplevelwarning:
 \begin{verbatim}
 # match "<hello><world>" with RE "<" (_* as contents) ">" -> contents;;
 - : string = "hello><world"
@@ -559,7 +569,7 @@ For instance, compare the following behaviors:
 \paragraph{Possessiveness or atomic grouping}
 Sometimes it can be useful to prevent backtracking.
 This is achieved by placing the \verb$Possessive$ keyword after a given group.
-For instance, compare the following:
+For instance, compare the following \toplevelwarning:
 \begin{verbatim}
 # match "abc" with RE _* _ -> true | _ -> false;;  
 - : bool = true
@@ -724,45 +734,54 @@ returns only\\
 
 \section{Tools}
 
+\subsection{Micmatch, Mikmatch, old Camlp4, new Camlp4, Camlp5}
+
+Camlp4/Camlp5 is the set of tools that allows to build and use
+syntax extensions of OCaml. We distinguish 3 major variants of Camlp4:
+\begin{itemize}
+\item The ``old Camlp4'' is Camlp4 as distributed with OCaml until 
+version 3.09.3.
+\item Camlp5 is an independent branch of the old Camlp4, compatible 
+with at least the 3.09 and 3.10 release lines of OCaml. It is close
+to 100\% compatible with the old Camlp4.
+\item The new Camlp4 or just Camlp4 shares the same goals as the 
+old Camlp4 and Camlp5, but is largely incompatible with them.
+It is included in the core OCaml distribution starting from OCaml 3.10
+and replaces the old Camlp4.
+\end{itemize}
+
+Micmatch is the name of the original implementation of Mikmatch for the
+old Camlp4:
+\begin{itemize}
+\item Micmatch < 1.0 requires the old Camlp4.
+\item Micmatch $\geq$ 1.0 requires Camlp5.
+\item Mikmatch requires the new Camlp4.
+\end{itemize}
+
+
 
 \subsection{The toplevel}
 
-\subsubsection{Micmatch\_str}
-The \texttt{micmatch\_str} command can be used as a replacement for
-\texttt{ocaml} either as an interactive toplevel or for executing
-scripts.
-Any library which is required by Micmatch\_str is automatically loaded.
-
-\subsubsection{Micmatch\_pcre}
-The \texttt{micmatch} command can be used as a replacement for
-\texttt{ocaml} either as an interactive toplevel or for executing
-scripts.
-Any library which is required by Micmatch\_pcre is automatically loaded.
+\toplevelwarning
 
 
 \subsection{The libraries for the preprocessor}
 
-\subsubsection{Micmatch\_str}
-The preprocessing library \texttt{pa\_micmatch\_str.cma} must be loaded by
+\subsubsection{Mikmatch\_str}
+The preprocessing library \texttt{pa\_mikmatch\_str.cma} must be loaded by
 the preprocessor (\texttt{camlp4o} or \texttt{camlp4r}).
 
-It is safe to use Micmatch\_str in
-multithreaded programs only if the Str library is not being used by
-one thread when
-some other threads are using Micmatch.
-When compiling multithreaded programs, the \texttt{-thread} option
-must be passed to the preprocessor.
+It is safe to use Mikmatch\_str in
+multithreaded programs without locks only if the patterns do not contain
+the @ keyword because it uses a shared cache of compiled regexps.
 
-
-\subsubsection{Micmatch\_pcre}
-The preprocessing library \texttt{pa\_micmatch\_pcre.cma} must be loaded by
+\subsubsection{Mikmatch\_pcre}
+The preprocessing library \texttt{pa\_mikmatch\_pcre.cma} must be loaded by
 the preprocessor (\texttt{camlp4o} or \texttt{camlp4r}).
-When compiling multithreaded programs, the \texttt{-thread} option
-must be passed to the preprocessor (versions earlier than
-0.693 do not require the \texttt{-thread} flag and do not accept
-it anyway. It is strictly required only for regexps with gaps (@expr) which
-did not exist before).
 
+It is safe to use Mikmatch\_str in
+multithreaded programs without locks only if the patterns do not contain
+the @ keyword because it uses a shared cache of compiled regexps.
 
 
 \subsection{The runtime libraries}
@@ -772,24 +791,24 @@ The executables must therefore be linked against \texttt{unix.cma}
 (bytecode) or \texttt{unix.cmxa} (native code) in addition to
 the specific libraries mentioned below.
 
-\subsubsection{Micmatch\_str}
+\subsubsection{Mikmatch\_str}
 
 In addition to the backend for the regular expressions engine
 (\texttt{str.cma} for bytecode or \texttt{str.cmxa} for native code), 
 the OCaml code which is produced by the preprocessor needs to be
-linked against either \texttt{run\_micmatch\_str.cma} (bytecode),
-\texttt{run\_micmatch\_str.cmxa} (native code), 
-\texttt{run\_micmatch\_str\_mt.cma} (bytecode, threads)
-or \texttt{run\_micmatch\_str\_mt.cmxa} (native code, threads).
+linked against either \texttt{run\_mikmatch\_str.cma} (bytecode),
+\texttt{run\_mikmatch\_str.cmxa} (native code), 
+\texttt{run\_mikmatch\_str\_mt.cma} (bytecode, threads)
+or \texttt{run\_mikmatch\_str\_mt.cmxa} (native code, threads).
 
 
-\subsubsection{Micmatch\_pcre}
+\subsubsection{Mikmatch\_pcre}
 
 In addition to the backend for the regular expressions engine
 (\texttt{pcre.cma} for bytecode or \texttt{pcre.cmxa} for native code), 
 the OCaml code which is produced by the preprocessor needs to be
-linked against either \texttt{run\_micmatch\_pcre.cma} (bytecode),
-\texttt{run\_micmatch\_pcre.cmxa} (native code).
+linked against either \texttt{run\_mikmatch\_pcre.cma} (bytecode),
+\texttt{run\_mikmatch\_pcre.cmxa} (native code).
 Multithreaded programs are supported as well
 and do not require a specific library.
 
@@ -800,7 +819,7 @@ and do not require a specific library.
 \begin{htmlonly}
 \section{A small text-oriented library}
 \begin{rawhtml}
-<a href="mmodoc/index.html">Module Micmatch</a>
+<a href="mmodoc/index.html">Module Mikmatch</a>
 \end{rawhtml}
 \end{htmlonly}
 

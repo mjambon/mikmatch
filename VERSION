@@ -1,3 +1,3 @@
 #!/bin/sh
-micmatch_version="0.700"
-echo -n $micmatch_version
+mikmatch_version="1.0.0"
+echo -n $mikmatch_version

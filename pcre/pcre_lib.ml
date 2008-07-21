@@ -9,8 +9,8 @@ open Mm_util
 open Regexp_ast
 
 let _ =
-  Constants.mod_runtime := "Run_micmatch_pcre";
-  Constants.mod_runtime_mt := "Run_micmatch_pcre"
+  Constants.mod_runtime := "Run_mikmatch_pcre";
+  Constants.mod_runtime_mt := "Run_mikmatch_pcre"
 
 (* output for PCRE: Perl Compatible Regular Expressions *)
 

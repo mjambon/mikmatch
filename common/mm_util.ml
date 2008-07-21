@@ -102,7 +102,7 @@ let list_of_binding b =
       | <:binding< $p$ = $e$ >> -> (p, e) :: l
       | <:binding< $anti: _ $ >> ->
 	failure (Ast.loc_of_binding b)
-	  "Antiquotations for let bindings are not supported by micmatch"
+	  "Antiquotations for let bindings are not supported by mikmatch"
   in
   aux b []
 

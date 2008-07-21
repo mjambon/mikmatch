@@ -7,8 +7,8 @@ open Mm_util
 open Constants
 
 let _ =
-  mod_runtime := "Run_micmatch_str";
-  mod_runtime_mt := "Run_micmatch_str_mt"
+  mod_runtime := "Run_mikmatch_str";
+  mod_runtime_mt := "Run_mikmatch_str_mt"
 
 let str_mutex = "str_mutex"
 

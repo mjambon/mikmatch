@@ -1,4 +1,4 @@
-exception Micmatch_exit
+exception Mikmatch_exit
 
 open Pcre
 

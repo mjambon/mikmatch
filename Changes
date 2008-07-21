@@ -1,8 +1,8 @@
-Changes in the successive versions of Micmatch-redux
-====================================================
+Changes in the successive versions of Mikmatch
+==============================================
 
-Micmatch-redux is the port of micmatch 0.700 to the "new" Camlp4 (3.10).
-Micmatch-redux is not compatible with Camlp4 <= 3.09 or Camlp5.
+Mikmatch is the port of micmatch 0.700 to the "new" Camlp4 (3.10).
+Mikmatch is not compatible with Camlp4 <= 3.09 or Camlp5.
 
 Please send bug reports, comments or feature requests to 
 Martin Jambon <martin@mjambon.com> or to the public forum at 
@@ -17,11 +17,27 @@ doc = major changes in the documentation
 pkg = changes in the structure of the package or in the installation procedure
 
 
+1.0.0: [*]   First release of mikmatch, translation of micmatch 0.700 for
+             the "new camlp4" 3.10.
+       [pkg] License: all source code is now distributed under the BSD license.
+       [pkg] All occurrences of "micmatch" have been replaced by "mikmatch".
+       [-ui] Temporarily no toplevel support for the syntax features, waiting
+             for the availability of camlp4 filters for toplevel phrases.
+       [pkg] Custom toplevels are no longer built and installed.
+       [+ui] No more polymorphic value restriction. Functions that
+             use mikmatch patterns can now be polymorphic.
+             Many identifiers with the "__mikmatch" prefix are now visible
+             as module structure items.
+       [-ui] Dropped support for Camlp4's revised syntax.
+       [-ui] No more -thread option. Only matching patterns that contain @
+             use a table that is shared among threads. User code is responsible
+             for using locks if needed.
 
-------------------------- Micmatch pre-redux --------------------------
 
-This is the history for micmatch before the port to Camlp4 3.10, named
-micmatch-redux.
+------------------------- Micmatch (for camlp4 <= 3.09) ------------------
+
+This is the history for micmatch before the port to Camlp4 3.10, renamed
+mikmatch.
 
 0.700: [bug] It was not possible to use "Not" outside of micmatch_pcre
              regexps. This is now fixed.

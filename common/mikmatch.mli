@@ -1,11 +1,11 @@
 (** A small text-oriented library *)
 
-(** The [Micmatch] module provides a submodule named [Text]. 
-A normal usage is to place [open Micmatch] at the beginning of 
+(** The [Mikmatch] module provides a submodule named [Text]. 
+A normal usage is to place [open Mikmatch] at the beginning of 
 user code that uses it. 
 
-This module is part of the runtime environment of Micmatch 
-(the library run_micmatch_pcre.cma or equivalent).
+This module is part of the runtime environment of Mikmatch 
+(the library run_mikmatch_pcre.cma or equivalent).
 *)
 
 module Text :
@@ -167,11 +167,11 @@ sig
     are examined in an undefined order. When a file path matches,
     [action] is applied to the string representing the path.
     Options [absolute] and [path] have the same meaning and the same 
-    default values as in {!Micmatch.Directory.list}.
+    default values as in {!Mikmatch.Directory.list}.
 
     [nofollow] can be used to prevent from considering symbolic links 
     as directories. It is false by default. 
-    See also {!Micmatch.Directory.is_dir}.
+    See also {!Mikmatch.Directory.is_dir}.
   *)
 
   val lscan :
@@ -181,7 +181,7 @@ sig
     ?root:string list ->
     ?nofollow:bool ->
     (string list -> unit) -> (string -> bool) list -> unit
-  (** Same as {!Micmatch.Glob.scan} but file paths are kept as a list
+  (** Same as {!Mikmatch.Glob.scan} but file paths are kept as a list
     of strings that form a valid path when concatenated using
     [Filename.concat]. Option [rev] can be set if the lists representing
     paths are in reversed order, i.e. the root comes last.
@@ -199,10 +199,10 @@ sig
     ?nofollow:bool -> 
     ?sort:bool -> 
     (string -> bool) list -> string list
-    (** [list path_filter] works like {!Micmatch.Glob.scan} but returns a list
+    (** [list path_filter] works like {!Mikmatch.Glob.scan} but returns a list
       of all file paths that match [path_filter].
 
-    An example in Micmatch syntax is [list [FILTER _* ".ml" eos]].
+    An example in Mikmatch syntax is [list [FILTER _* ".ml" eos]].
     It returns the list of ".ml" files in the current directory.
     It could have been written as 
     [list [ fun s -> Filename.check_suffix s ".ml"]] and is equivalent
@@ -216,7 +216,7 @@ sig
     ?root:string list ->
     ?nofollow:bool ->
     ?sort:bool -> (string -> bool) list -> string list list
-    (** [llist path_filter] works like {!Micmatch.Glob.lscan} 
+    (** [llist path_filter] works like {!Mikmatch.Glob.lscan} 
       but returns a list
       of all file paths that match [path_filter]. *)
 end

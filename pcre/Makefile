@@ -13,7 +13,7 @@ SOURCES = \
   syntax_common.ml \
   syntax_pcre.ml
 
-RESULT = micmatch_pcre
+RESULT = mikmatch_pcre
 
 OCAMLFLAGS = -dtypes
 
@@ -28,13 +28,13 @@ INCDIRS = ../common
 USE_CAMLP4 = yes
 
 COMMON_LIBINSTALL_FILES = \
-  pa_micmatch_pcre.cma pa_micmatch_pcre.cmo pa_micmatch_pcre.cmi \
-  run_micmatch_pcre.cmi micmatch.cmi micmatch.mli
+  pa_mikmatch_pcre.cma pa_mikmatch_pcre.cmo pa_mikmatch_pcre.cmi \
+  run_mikmatch_pcre.cmi mikmatch.cmi mikmatch.mli
 BC_LIBINSTALL_FILES = \
-  run_micmatch_pcre.cma run_micmatch_pcre.cmo 
+  run_mikmatch_pcre.cma run_mikmatch_pcre.cmo 
 NC_LIBINSTALL_FILES = \
-  run_micmatch_pcre.cmxa run_micmatch_pcre.cmx \
-  run_micmatch_pcre.a run_micmatch_pcre.o micmatch.cmx
+  run_mikmatch_pcre.cmxa run_mikmatch_pcre.cmx \
+  run_mikmatch_pcre.a run_mikmatch_pcre.o mikmatch.cmx
 ALL_LIBINSTALL_FILES = \
   $(COMMON_LIBINSTALL_FILES) $(BC_LIBINSTALL_FILES) $(NC_LIBINSTALL_FILES)
 
@@ -55,12 +55,12 @@ force:
 	touch $(SOURCES)
 	$(MAKE)
 
-links: micmatch.mli micmatch.ml match.ml syntax_common.ml mm_util.ml \
+links: mikmatch.mli mikmatch.ml match.ml syntax_common.ml mm_util.ml \
 	global_def.mli global_def.ml
 
-micmatch.mli: ../common/micmatch.mli
+mikmatch.mli: ../common/mikmatch.mli
 	ln -s $< $@
-micmatch.ml: ../common/micmatch.ml
+mikmatch.ml: ../common/mikmatch.ml
 	ln -s $< $@
 syntax_common.ml: ../common/syntax_common.ml
 	ln -s $< $@
@@ -74,7 +74,7 @@ global_def.ml: ../common/global_def.ml
 	ln -s $< $@
 
 pa_lib:
-	$(MAKE) RESULT=pa_micmatch_pcre pabc bcl
+	$(MAKE) RESULT=pa_mikmatch_pcre pabc bcl
 
 install: topinstall
 	if test -f nativecode; \
@@ -91,18 +91,18 @@ version:
 	sed -e "s/VERSION/$(VERSION)/" < META.template > META
 
 misc-bc:
-	ocamlc -c micmatch.mli
-	ocamlc -a -o run_micmatch_pcre.cma -I $(PCRE_DIR) \
-		micmatch.ml run_micmatch_pcre.ml
-	ocamlmktop -o micmatch_pcre.top \
+	ocamlc -c mikmatch.mli
+	ocamlc -a -o run_mikmatch_pcre.cma -I $(PCRE_DIR) \
+		mikmatch.ml run_mikmatch_pcre.ml
+	ocamlmktop -o mikmatch_pcre.top \
 		-I +camlp4 -I $(PCRE_DIR) \
 		camlp4o.cma \
-		pa_micmatch_pcre.cma pcre.cma unix.cma run_micmatch_pcre.cma
+		pa_mikmatch_pcre.cma pcre.cma unix.cma run_mikmatch_pcre.cma
 
 misc-nc:
-	ocamlc -c micmatch.mli
-	ocamlopt -a -o run_micmatch_pcre.cmxa -I $(PCRE_DIR) \
-		micmatch.ml run_micmatch_pcre.ml
+	ocamlc -c mikmatch.mli
+	ocamlopt -a -o run_mikmatch_pcre.cmxa -I $(PCRE_DIR) \
+		mikmatch.ml run_mikmatch_pcre.ml
 
 
 .PHONY: test simple-test more-tests test-install
@@ -110,17 +110,17 @@ test: simple-test more-tests
 
 # Toplevel (preinstall test)
 simple-test:
-	camlp4o ./pa_micmatch_pcre.cma -printer o test.ml > test.ppo
-	ocamlmktop -o micmatch_pcre.test -I +camlp4 -I .  -I $(PCRE_DIR) \
+	camlp4o ./pa_mikmatch_pcre.cma -printer o test.ml > test.ppo
+	ocamlmktop -o mikmatch_pcre.test -I +camlp4 -I .  -I $(PCRE_DIR) \
 		camlp4o.cma \
-		pa_micmatch_pcre.cma pcre.cma unix.cma run_micmatch_pcre.cma
+		pa_mikmatch_pcre.cma pcre.cma unix.cma run_mikmatch_pcre.cma
 
 # Preinstall test
 more-tests:
-	camlp4o ./pa_micmatch_pcre.cma -printer o -direct test.ml > test.ppo
+	camlp4o ./pa_mikmatch_pcre.cma -printer o -direct test.ml > test.ppo
 	ocamlopt \
-		-pp 'camlp4o ./pa_micmatch_pcre.cma' \
-		-I $(PCRE_DIR) pcre.cmxa run_micmatch_pcre.cmxa \
+		-pp 'camlp4o ./pa_mikmatch_pcre.cma' \
+		-I $(PCRE_DIR) pcre.cmxa run_mikmatch_pcre.cmxa \
 		test.ml -o test
 	./test
 
@@ -128,14 +128,14 @@ more-tests:
 test-install:
 	ocamlfind ocamlopt \
 		-syntax camlp4o \
-		-package pcre,micmatch_pcre\
+		-package pcre,mikmatch_pcre\
 		-linkpkg \
 		test.ml -o test
 	./test
 
 TRASH = \
  *~ *.ppo *.cm[ioxa] *.cmxa *.o *.a *.top \
- *.test test test.more micmatch bytecode nativecode micmatch_pcre.ml
+ *.test test test.more mikmatch bytecode nativecode mikmatch_pcre.ml
 
 
 OCAMLMAKEFILE = ../OCamlMakefile
