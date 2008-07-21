@@ -813,13 +813,13 @@ Multithreaded programs are supported as well
 and do not require a specific library.
 
 \begin{latexonly}
-\input{mmodoc.tex}
+\input{mikmatch-ocamldoc.tex}
 \end{latexonly}
 
 \begin{htmlonly}
 \section{A small text-oriented library}
 \begin{rawhtml}
-<a href="mmodoc/index.html">Module Mikmatch</a>
+<a href="mikmatch-manual/index.html">Module Mikmatch</a>
 \end{rawhtml}
 \end{htmlonly}
 

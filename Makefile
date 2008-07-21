@@ -71,7 +71,7 @@ archive:
 	 	cp -r . /tmp/mikmatch && \
 		cd /tmp/mikmatch && \
 			$(MAKE) clean && \
-			rm -f *~ mikmatch*.tar* && \
+			rm -rf *~ mikmatch*.tar* `find . -name .svn` && \
 		cd /tmp && cp -r mikmatch mikmatch-$(VERSION) && \
 		tar czf mikmatch.tar.gz mikmatch && \
 		tar cjf mikmatch.tar.bz2 mikmatch && \
@@ -86,5 +86,5 @@ archive:
 	cp Changes $$WWW/mikmatch-changes.txt
 	cp doc/mikmatch-manual.pdf $$WWW
 	cp doc/mikmatch-manual.html $$WWW/mikmatch-manual-nocounter.html
-	cp -r doc/mmodoc/ $$WWW
+	cp doc/mikmatch-ocamldoc/* $$WWW/mikmatch-ocamldoc
 	touch -c $$WWW/mikmatch.html.mlx
