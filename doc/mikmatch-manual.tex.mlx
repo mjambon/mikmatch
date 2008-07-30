@@ -124,6 +124,9 @@ Match the pattern given by \textit{regexp} 0 time or more (priority 0).
 \item \underline{\textit{regexp} \textbf{+}}
 Match the pattern given by \textit{regexp} 1 time or more (priority 0).
 
+\item \underline{\textit{regexp} \textbf{?}}
+Match the pattern given by \textit{regexp} at most once (priority 0).
+
 \item \underline{\textit{regexp}\textbf{\{}\textit{m\textbf{$-$}n}\textbf{\}}}
 Match \textit{regexp} at least \textit{m}~times and up to
 \textit{n}~times. \textit{m} and~\textit{n} must be integer
