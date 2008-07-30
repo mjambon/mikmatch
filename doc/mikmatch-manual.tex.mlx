@@ -71,7 +71,7 @@ Mikmatch\_pcre.
 
 Regular expressions support the syntax of Ocamllex regular
 expressions as of version 3.08.1 of the Objective Caml system
-(\url{http://caml.inria.fr/ocaml/htmlman/}), and 
+(\url{http://caml.inria.fr/pub/docs/manual-ocaml/}), and 
 several additional features.
 A regular expression (\textit{regexp}) is defined by the grammar that
 follows. The associativity rules are given by priority levels. 0 is the
