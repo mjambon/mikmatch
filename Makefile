@@ -84,6 +84,9 @@ archive:
 	cp LICENSE $$WWW/mikmatch-license.txt
 	cp VERSION $$WWW/mikmatch-version
 	cp Changes $$WWW/mikmatch-changes.txt
+	$(MAKE) install-www-doc
+
+install-www-doc:
 	cp doc/mikmatch-manual.pdf $$WWW
 	cp doc/mikmatch-manual.html $$WWW/mikmatch-manual-nocounter.html
 	cp doc/mikmatch-ocamldoc/* $$WWW/mikmatch-ocamldoc

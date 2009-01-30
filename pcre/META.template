@@ -2,7 +2,7 @@ name = "mikmatch_pcre"
 version = "VERSION"
 description = "Pattern matching extended with regexps in Ocamllex syntax"
 
-requires = "camlp4 pcre unix"
+requires = "camlp4 pcre unix tophide"
 archive(syntax,toploop) = "pa_mikmatch_pcre.cma run_mikmatch_pcre.cma"
 archive(syntax,create_toploop) = "pa_mikmatch_pcre.cma run_mikmatch_pcre.cma"
 archive(syntax,preprocessor) = "pa_mikmatch_pcre.cma"

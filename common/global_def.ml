@@ -31,9 +31,9 @@ let init get =
     <:str_item< $!accu$ ; $si0$ >>
   in
 
-  AstFilters.register_str_item_filter rewrite (* ;
+  AstFilters.register_str_item_filter rewrite;
   AstFilters.register_topphrase_filter rewrite
-					      *)
+
 
 let init_from_table tbl =
   let get _loc id = 

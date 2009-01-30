@@ -96,6 +96,7 @@ misc-bc:
 		mikmatch.ml run_mikmatch_pcre.ml
 	ocamlmktop -o mikmatch_pcre.top \
 		-I +camlp4 -I $(PCRE_DIR) \
+		dynlink.cma \
 		camlp4o.cma \
 		pa_mikmatch_pcre.cma pcre.cma unix.cma run_mikmatch_pcre.cma
 
@@ -112,6 +113,7 @@ test: simple-test more-tests
 simple-test:
 	camlp4o ./pa_mikmatch_pcre.cma -printer o test.ml > test.ppo
 	ocamlmktop -o mikmatch_pcre.test -I +camlp4 -I .  -I $(PCRE_DIR) \
+		dynlink.cma \
 		camlp4o.cma \
 		pa_mikmatch_pcre.cma pcre.cma unix.cma run_mikmatch_pcre.cma
 

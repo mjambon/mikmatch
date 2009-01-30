@@ -488,6 +488,10 @@ let rec names patt =
       (recons_patt2 _loc p1 p2 
 	 (fun p1 p2 -> <:patt< $p1$ $p2$ >>))
 
+    | <:patt< lazy $p$ >> ->
+      (recons_patt1 _loc p
+	 (fun p -> <:patt< lazy $p$ >>))
+
     | <:patt< ( $p1$ as $p2$ ) >> ->
       (recons_patt2 _loc p1 p2 
 	 (fun p1 p2 -> 
@@ -552,7 +556,6 @@ let rec names patt =
 	  sub_alternatives = l } in
       (set, has_re, kind, subpatt)
 
-      
     | <:patt< $chr:_$ >>
     | <:patt< $int:_$ >>
     | <:patt< $str:_$ >>

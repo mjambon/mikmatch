@@ -2,7 +2,7 @@ name = "mikmatch_str"
 version = "VERSION"
 description = "Pattern matching extended with regexps in Ocamllex syntax"
 
-requires = "camlp4 str unix"
+requires = "camlp4 str unix tophide"
 archive(syntax,toploop) = "pa_mikmatch_str.cma run_mikmatch_str.cma"
 archive(syntax,create_toploop) = "pa_mikmatch_str.cma run_mikmatch_str.cma"
 archive(syntax,preprocessor) = "pa_mikmatch_str.cma"

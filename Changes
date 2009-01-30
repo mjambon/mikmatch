@@ -8,7 +8,7 @@ Please send bug reports, comments or feature requests to
 Martin Jambon <martin@mjambon.com> or to the public forum at 
 http://groups.google.com/group/micmatch
 
-
+!!! = some incompatibilities
 opt = optimizations
 +ui = additions in the user interface
 -ui = restrictions in the user interface
@@ -16,6 +16,14 @@ bug = bug or security fix
 doc = major changes in the documentation
 pkg = changes in the structure of the package or in the installation procedure
 
+1.0.1: [!!!] Support for Camlp4 3.11.0, including toplevel support which 
+             wasn't possible with Camlp4 3.10.
+             Dropped support for Camlp4 3.10 (please use mikmatch 1.0.0
+             instead).
+             Will restore compatibility with Camlp4 3.10 only in case
+             of significant new mikmatch features.
+       [pkg] Added dependency towards tophide. It is not a strict requirement
+             but improves the toplevel experience.
 
 1.0.0: [*]   First release of mikmatch, translation of micmatch 0.700 for
              the "new camlp4" 3.10.
