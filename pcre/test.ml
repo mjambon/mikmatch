@@ -533,3 +533,15 @@ let _ =
 	assert (o#x = "ab" && o#y = 12); 
 	printf "Passed CAPTURE test\n%!"
     | None -> assert false
+
+let _ =
+  match (SPLIT "x" ) "axbxc" with
+      [ "a"; "b"; "c" ] ->
+	printf "Passed basic SPLIT test\n%!"
+    | _ -> assert false
+
+let _ =
+  match (SPLIT < "x" > ) "axbxc" with
+      [ "a"; "xb"; "xc" ] ->
+	printf "Passed zero-length SPLIT test (bug in versions <= 1.0.1)\n%!"
+    | _ -> assert false

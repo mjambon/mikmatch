@@ -1,3 +1,5 @@
+(* $Id$ *)
+
 exception Mikmatch_exit
 
 open Pcre
@@ -35,8 +37,8 @@ let scan ~full rex pos ~ftext ~fmatch subj =
 	  irflags rex cur_pos subj subgroup_offsets offset_vector None; true
       with Not_found -> 
 	let last = String.length subj in
-	if full || last > cur_pos then
-	  ftext (String.sub subj cur_pos (last - cur_pos));
+	if full || last > previous_last then
+	  ftext (String.sub subj previous_last (last - previous_last));
 	false
     then
       (let first = offset_vector.(0) in
