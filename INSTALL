@@ -1,0 +1,62 @@
+Installation of Mikmatch version 1.0.0 or higher
+================================================
+
+
+The recommended way of installing mikmatch and a bunch of other packages
+is from GODI (godi_console) available from http://godi.camlcity.org/
+or from your favorite packaging system.
+
+
+Otherwise, there is the manual install:
+
+Prerequisites:
+-------------
+
+You must have installed:
+
+  - OCaml including Camlp4 (versions 3.10.2 and 3.11.0 should be OK;
+    versions up to 3.09.3 will not work).
+
+  - PCRE-OCaml (http://www.ocaml.info/home/ocaml_sources.html)
+
+
+Everything will run smoothly if you have:
+
+  - Findlib, i.e. ocamlfind 
+    (http://projects.camlcity.org/projects/findlib.html)
+  - Gnu make
+  - an Sh-compatible shell
+
+
+Compilation:
+-----------
+
+  make
+
+Installation:
+------------
+
+  make install
+
+
+Uninstallation:
+--------------
+
+  make uninstall
+
+Options:
+-------
+
+By default, only mikmatch_pcre is built and installed.
+Mikmatch_str can be built and installed with the following commands:
+  make str            # compilation
+  make install-str    # installation
+  make uninstall-str  # uninstallation
+
+
+Problems?
+--------
+
+Questions, comments and bug reports should be sent to:
+
+  http://groups.google.com/group/micmatch (no subscription required)
