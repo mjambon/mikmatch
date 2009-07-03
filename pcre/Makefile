@@ -135,6 +135,11 @@ test-install:
 		test.ml -o test
 	./test
 
+# Debugging
+.PHONY: test2
+test2:
+	camlp4o ./pa_mikmatch_pcre.cma -printer o test2.ml > test2.ppo
+
 TRASH = \
  *~ *.ppo *.cm[ioxa] *.cmxa *.o *.a *.top \
  *.test test test.more mikmatch bytecode nativecode mikmatch_pcre.ml
