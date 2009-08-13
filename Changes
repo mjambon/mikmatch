@@ -16,6 +16,8 @@ bug = bug or security fix
 doc = major changes in the documentation
 pkg = changes in the structure of the package or in the installation procedure
 
+1.0.2: [bug] Fixed important name scoping bug.
+
 1.0.1: [!!!] Support for Camlp4 3.11.0, including toplevel support which 
              wasn't possible with Camlp4 3.10.
              Dropped support for Camlp4 3.10 (please use mikmatch 1.0.0
