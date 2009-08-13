@@ -31,7 +31,14 @@ let init get =
 	   let si = super#str_item si0 in
 	   let pending = !accu in
 	   accu := <:str_item< >>;
-	   <:str_item< $pending$ ; $si$ >>
+	   match pending with
+	       <:str_item< >> ->
+			   (* Special workaround.
+			      Otherwise directives are not recognized and
+			      are skipped. *)
+			   si
+
+	     | _ -> <:str_item< $pending$ ; $si$ >>
        end)
     in
     map # str_item si0
