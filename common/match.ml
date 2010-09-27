@@ -1085,10 +1085,10 @@ let gen_handle_let_bindings ?in_expr _loc is_rec l =
 	    None -> 
 	      let bindings = List.map (binding_of_pair _loc) l in
 	      `Str_item 
-	        <:str_item< value $rec: meta_bool is_rec$ $list:bindings$ >>
+	        <:str_item< value $rec: rec_flag is_rec$ $list:bindings$ >>
 	  | Some e2 -> 
 	      let bindings = List.map (binding_of_pair _loc) l in
-	      `Expr <:expr< let $rec: meta_bool is_rec$ $list:bindings$ in
+	      `Expr <:expr< let $rec: rec_flag is_rec$ $list:bindings$ in
 	                    $e2$ >>
 
 let handle_let_bindings _loc is_rec l e2 =

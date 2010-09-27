@@ -118,3 +118,6 @@ let eval_string s = Camlp4.Struct.Token.Eval.string ~strict:() s
 
 let eval_char s = Camlp4.Struct.Token.Eval.char s
 
+let rec_flag = function
+    true -> Ast.ReRecursive
+  | false -> Ast.ReNil
