@@ -16,6 +16,12 @@ bug = bug or security fix
 doc = major changes in the documentation
 pkg = changes in the structure of the package or in the installation procedure
 
+2011-10-21
+1.0.4: [bug] Fixed bug consisting in Not_found exception being raised
+             in an alternative capturing an empty string.
+             (losing compatibility with pcre-ocaml versions from 2004
+             or earlier)
+
 1.0.3: [!!!] Builds with camlp4 3.12.0 but no longer with 3.11.
              Thanks to Jake Donham for the patch.
 

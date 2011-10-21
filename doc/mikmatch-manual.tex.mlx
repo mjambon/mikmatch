@@ -16,7 +16,7 @@
 \title{Mikmatch Version~## Sys.command "../VERSION" ##\\
 Reference Manual}
 \author{Martin Jambon}
-\date{July 30, 2008}
+\date{October 21, 2011}
 
 \setcounter{secnumdepth}{5}
 \setcounter{tocdepth}{4}
