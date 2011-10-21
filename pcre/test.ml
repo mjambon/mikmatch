@@ -545,3 +545,14 @@ let _ =
       [ "a"; "xb"; "xc" ] ->
 	printf "Passed zero-length SPLIT test (bug in versions <= 1.0.1)\n%!"
     | _ -> assert false
+
+let () =
+  try
+    match "a" with
+        / "a" ("" as x) | ("b" as x) / ->
+          ignore x;
+          printf "Passed zero-length capture in alternative \
+                  (bug in versions <= 1.0.3)\n%!"
+      | _ -> assert false
+  with Not_found ->
+    assert false

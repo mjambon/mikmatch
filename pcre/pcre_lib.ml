@@ -437,7 +437,7 @@ let insert_bindings_poly
     e
     
 let insert_group_bindings = 
-  insert_bindings_poly ~skip_empty_captures:true matched_group
+  insert_bindings_poly matched_group
 let insert_position_bindings = 
   insert_bindings_poly ~get_fst:true matched_position
 
