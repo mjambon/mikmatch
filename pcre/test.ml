@@ -556,3 +556,12 @@ let () =
       | _ -> assert false
   with Not_found ->
     assert false
+
+let () =
+  match "1" with
+      / ("0" as x = 0) | ("1" as x := int_of_string) / ->
+        if x = 1 then
+          printf "Passed alt/= test (bug in versions <= 1.0.4)\n%!"
+        else
+          assert false
+    | _ -> assert false

@@ -353,7 +353,7 @@ let convert _loc conv e =
 	                       if s = "" then None 
 			       else Some s >>
 	  | `Custom f -> <:expr< $f$ $e$ >>
-	  | `Value e' -> <:expr< $e'$ >>
+	  | `Value e' -> <:expr< do { ignore $e$; $e'$ } >>
 
 let insert_bindings_poly make_expr _loc target set e =
   Named_groups.fold

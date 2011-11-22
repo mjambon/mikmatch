@@ -391,7 +391,7 @@ let convert _loc conv e =
 	                       if s = "" then None 
 			       else Some s >>
 	  | `Custom f -> <:expr< $f$ $e$ >>
-	  | `Value e' -> <:expr< $e'$ >>
+	  | `Value e' -> <:expr< do { ignore $e$; $e'$ } >>
     
 let insert_bindings_poly 
   ?(skip_empty_captures = false) (* for compatibility with 
