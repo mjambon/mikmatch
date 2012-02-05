@@ -1,4 +1,5 @@
-.PHONY: defaults install uninstall all opt mikmatch-pcre mikmatch-str \
+.PHONY: default install uninstall reinstall \
+        all opt mikmatch-pcre mikmatch-str \
         common install-str install-pcre uninstall-str uninstall-pcre \
         backup clean archive pcre str
 
@@ -15,6 +16,9 @@ export BINDIR
 default: mikmatch-pcre
 install: install-pcre
 uninstall: uninstall-pcre
+reinstall:
+	$(MAKE) uninstall
+	$(MAKE) install
 
 ## GODIVA/GODI targets
 all: common
