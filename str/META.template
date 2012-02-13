@@ -3,30 +3,10 @@ version = "VERSION"
 description = "Pattern matching extended with regexps in Ocamllex syntax"
 
 requires = "camlp4 pcre unix"
+requires(toploop) = "tophide"
+
 archive(syntax,toploop) = "pa_mikmatch_str.cma run_mikmatch_str.cma"
 archive(syntax,create_toploop) = "pa_mikmatch_str.cma run_mikmatch_str.cma"
 archive(syntax,preprocessor) = "pa_mikmatch_str.cma"
 archive(byte) = "run_mikmatch_str.cma"
 archive(native) = "run_mikmatch_str.cmxa"
-
-package "run" (
-  description = "Subpackage providing only runtime support for mikmatch_str"
-  version = "VERSION"
-  requires = "pcre unix"
-  archive(byte) = "run_mikmatch_str.cma"
-  archive(native) = "run_mikmatch_str.cmxa"
-)
-
-package "syntax" (
-  description = "Subpackage providing only syntax support for mikmatch_str"
-  version = "VERSION"
-  requires = "pcre camlp4"
-  archive(syntax,toploop) = "pa_mikmatch_str.cma"
-  archive(syntax,preprocessor) = "pa_mikmatch_str.cma"
-)
-
-package "top" (
-  description = "Subpackage providing full toplevel support for mikmatch_str"
-  version = "VERSION"
-  requires = "mikmatch_str.syntax mikmatch_str.run tophide"
-)
