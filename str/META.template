@@ -3,7 +3,7 @@ version = "VERSION"
 description = "Pattern matching extended with regexps in Ocamllex syntax"
 
 requires = "camlp4 pcre unix"
-requires(toploop) = "tophide"
+requires(toploop) += "tophide"
 
 archive(syntax,toploop) = "pa_mikmatch_str.cma run_mikmatch_str.cma"
 archive(syntax,create_toploop) = "pa_mikmatch_str.cma run_mikmatch_str.cma"
