@@ -31,11 +31,11 @@ Reference Manual}
 \maketitle
 
 This manual is available online as a single HTML file at\\
-\url{http://martin.jambon.free.fr/mikmatch-manual.html}\\
+\url{http://mjambon.com/mikmatch-manual.html}\\
 and as a PDF document at\\
-\url{http://martin.jambon.free.fr/mikmatch-manual.pdf}.\\
+\url{http://mjambon.com/mikmatch-manual.pdf}.\\
 The home page of Mikmatch is:\\
-\url{http://martin.jambon.free.fr/micmatch.html}
+\url{http://mjambon.com/micmatch.html}
 
 \tableofcontents
 
@@ -822,7 +822,7 @@ and do not require a specific library.
 \begin{htmlonly}
 \section{A small text-oriented library}
 \begin{rawhtml}
-<a href="mikmatch-manual/index.html">Module Mikmatch</a>
+<a href="http://mjambon.com/mikmatch-ocamldoc/Mikmatch.html">Module Mikmatch</a>
 \end{rawhtml}
 \end{htmlonly}
 
