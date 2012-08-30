@@ -418,15 +418,19 @@ let sum_kind kind1 kind2 =
 let names_from_list names _loc l get =
   List.fold_right
     (fun x (set, has_re, kind, spatts, subpatts, res) ->
-       let p = get x in
-       let (local_set, local_has_re, local_kind, subpatt) = names p in
-       check_different_ids _loc local_set set;
-       (Names.union local_set set, 
-	(has_re || local_has_re),
-	sum_kind kind local_kind,
-	subpatt.sub_patt :: spatts, 
-	subpatt.sub_alternatives @ subpatts,
-	subpatt.sub_specials @ res))
+        match get x with
+            Some p ->
+              let (local_set, local_has_re, local_kind, subpatt) = names p in
+              check_different_ids _loc local_set set;
+              (Names.union local_set set, 
+	       (has_re || local_has_re),
+	       sum_kind kind local_kind,
+	       subpatt.sub_patt :: spatts, 
+	       subpatt.sub_alternatives @ subpatts,
+	       subpatt.sub_specials @ res)
+          | None ->
+              (set, has_re, kind, <:patt< __dummy >> :: spatts, subpatts, res)
+    )
     l
     (Names.empty, false, `Normal, [], [], [])
     
@@ -522,9 +526,17 @@ let rec names patt =
     | <:patt< { $p$ } >> ->
       let ppl = list_of_record p in 
       let (set, has_re, kind, spatts, l, res) = 
-	names_from_list names _loc ppl snd in
+        names_from_list names _loc ppl
+          (function `Normal (_, x) -> Some x | `Other _ -> None)
+      in
       let fields = 
-	List.map2 (fun (p1, p2) spatt -> (p1, spatt)) ppl spatts in
+        List.map2 (
+          fun field spatt ->
+            match field with
+              | `Normal (p1, p2) -> `Normal (p1, spatt)
+              | `Other p -> `Other p
+        ) ppl spatts
+      in
       let record_body = record_of_list _loc fields in
       let subpatt = 
 	{ sub_patt = <:patt< { $record_body$ } >>;
@@ -536,7 +548,7 @@ let rec names patt =
     | <:patt< [| $p$ |] >> -> 
       let pl = list_of_semicolon_patt p in
       let (set, has_re, kind, spatts, l, res) = 
-	names_from_list names _loc pl (fun x -> x) in
+	names_from_list names _loc pl (fun x -> Some x) in
       let subpatt = 
 	{ sub_patt = <:patt< [| $list:spatts$ |] >>;
 	  sub_names = set;
@@ -547,7 +559,7 @@ let rec names patt =
     | <:patt< ( $tup:p$ ) >> -> 
       let pl = list_of_comma_patt p in
       let (set, has_re, kind, spatts, l, res) = 
-	names_from_list names _loc pl (fun x -> x) in
+	names_from_list names _loc pl (fun x -> Some x) in
       let tuple_body = comma_patt_of_list _loc spatts in
       let subpatt = 
 	{ sub_patt = <:patt< ( $tup:tuple_body$ ) >>;

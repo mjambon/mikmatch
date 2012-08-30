@@ -42,9 +42,11 @@ let list_of_semicolon_patt p =
 
 let list_of_record p =
   List.map (
-    function
-	<:patt< $p1$ = $p2$ >> -> (p1, p2)
-      | _ -> assert false
+    fun field ->
+      match field with
+	  <:patt< $p1$ = $p2$ >> -> `Normal (p1, p2)
+        | p -> `Other p
+        | _ -> assert false
   ) (list_of_semicolon_patt p)
 
 
@@ -77,7 +79,11 @@ let semicolon_patt_of_list _loc = function
 let record_of_list _loc l =
   debug "record_of_list";
   semicolon_patt_of_list _loc
-    (List.map (fun (p1, p2) -> <:patt< $p1$ = $p2$ >>) l)
+    (List.map (
+      function
+        | `Normal (p1, p2) -> <:patt< $p1$ = $p2$ >>
+        | `Other p -> p
+     ) l)
 
 let meta_bool = function
     true -> Ast.BTrue 

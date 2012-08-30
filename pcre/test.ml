@@ -565,3 +565,13 @@ let () =
         else
           assert false
     | _ -> assert false
+
+let f x =
+  match x with
+    | {x = 1; _} -> ()
+    | _ -> ()
+
+let g x =
+  match x with
+    | {x} -> ()
+    | _ -> ()
