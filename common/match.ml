@@ -573,8 +573,9 @@ let rec names patt =
     | <:patt< $_$ ; $_$ >> (* record or array items *)
     | <:patt< $_$ = $_$ >> (* record field *)
     | <:patt< >>
-    | Ast.PaOlb _    (* optional label *)
-    | Ast.PaOlbi _   (* ? *)
+    | Ast.PaMod _    (* (module M) *)
+    | Ast.PaOlb _    (* ?s or ?s:(p) *)
+    | Ast.PaOlbi _   (* ?s:(p = e) or ?(p = e) *)
     | Ast.PaLab _ -> (* label *)
 	Messages.invalid_pattern _loc
 
