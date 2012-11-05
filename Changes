@@ -16,6 +16,12 @@ bug = bug or security fix
 doc = major changes in the documentation
 pkg = changes in the structure of the package or in the installation procedure
 
+2012-11-04
+1.0.6: [bug] Fix for camlp4 4.00.0
+
+2012-02-03
+1.0.5: [pkg] Subpackage "mikmatch_pcre.top" for toplevel usage
+
 2011-10-21
 1.0.4: [bug] Fixed bug consisting in Not_found exception being raised
              in an alternative capturing an empty string.
