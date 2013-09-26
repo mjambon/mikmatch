@@ -23,27 +23,27 @@ let seq _loc e =
 
 let extend_common () =
   (try DELETE_RULE Gram patt: LIDENT END
-   with Not_found -> ());
+   with _rule_not_found -> ());
 
   (try 
      DELETE_RULE Gram 
        expr: "let"; opt_rec; binding; "in"; expr LEVEL ";" 
      END
-   with Not_found -> 
+   with _rule_not_found -> 
      Messages.cannot_delete_rule "(1)");
 
   (try
      DELETE_RULE Gram
        str_item: "let"; opt_rec; binding; "in"; expr
      END
-   with Not_found -> 
+   with _rule_not_found -> 
      Messages.cannot_delete_rule "(2)");
 
   (try
      DELETE_RULE Gram
        str_item: "let"; opt_rec; binding
      END
-   with Not_found -> 
+   with _rule_not_found -> 
      Messages.cannot_delete_rule "(3)");
 
 
@@ -223,14 +223,14 @@ let extend_regular () =
      DELETE_RULE Gram
        expr: "function"; match_case
      END
-   with Not_found -> 
+   with _rule_not_found -> 
      Messages.cannot_delete_rule "(reg 1)");
 
   (try
      DELETE_RULE Gram
        expr: "match"; sequence; "with"; match_case
      END
-   with Not_found -> 
+   with _rule_not_found -> 
      Messages.cannot_delete_rule "(reg 2)");
 
   EXTEND Gram

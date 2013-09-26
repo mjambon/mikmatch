@@ -251,8 +251,10 @@ let _ =
   List.iter print_endline ((SPLIT ",") "a,b,c")
 
 let _ =
-  let l = 
-    List.filter (FILTER _* ".ml" eos) (Array.to_list (Sys.readdir ".")) in
+  let l =
+    List.filter
+      (fun s -> (FILTER _* ".ml" eos) s)
+      (Array.to_list (Sys.readdir ".")) in
   printf "*.ml: %s\n%!" (String.concat " " l)
 
 
@@ -565,6 +567,8 @@ let () =
         else
           assert false
     | _ -> assert false
+
+type test = { x : int; y : int }
 
 let f x =
   match x with
