@@ -16,7 +16,7 @@ let search rex f ?(pos = 0) subj =
     if 
       try
 	unsafe_pcre_exec 
-	  irflags rex cur_pos subj subgroup_offsets offset_vector None; true
+	  irflags rex ~pos:cur_pos ~subj_start:0 ~subj ~subgroups2:subgroup_offsets offset_vector None; true
       with Not_found -> false
     then
       (f substrings;
@@ -34,7 +34,7 @@ let scan ~full rex pos ~ftext ~fmatch subj =
     if 
       try
 	unsafe_pcre_exec 
-	  irflags rex cur_pos subj subgroup_offsets offset_vector None; true
+	  irflags rex ~pos:cur_pos ~subj_start:0 ~subj ~subgroups2:subgroup_offsets offset_vector None; true
       with Not_found -> 
 	let last = String.length subj in
 	if full || last > previous_last then
