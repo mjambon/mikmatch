@@ -39,9 +39,9 @@ ALL_LIBINSTALL_FILES = \
   $(COMMON_LIBINSTALL_FILES) $(BC_LIBINSTALL_FILES) $(NC_LIBINSTALL_FILES)
 
 .PHONY: default all-bc all-nc all force links pa_lib install uninstall \
-        version topinstall misc-bc misc-nc
+        topinstall misc-bc misc-nc
 
-default: version links pa_lib misc-bc misc-nc
+default: links pa_lib misc-bc misc-nc
 	touch bytecode
 	touch nativecode
 all-bc: links pa_lib misc-bc
@@ -86,9 +86,6 @@ install: topinstall
 
 uninstall:
 	$(MAKE) libuninstall
-
-version:
-	sed -e "s/VERSION/$(VERSION)/" < META.template > META
 
 misc-bc:
 	ocamlc -c mikmatch.mli

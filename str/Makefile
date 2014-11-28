@@ -33,7 +33,7 @@ LIBINSTALL_FILES := \
 
 .PHONY: default force all links 
 
-default: version links pa_lib misc
+default: links pa_lib misc
 force:
 	touch $(SOURCES)
 	$(MAKE)
@@ -58,7 +58,7 @@ global_def.mli: ../common/global_def.mli
 global_def.ml: ../common/global_def.ml
 	ln -s $< $@
 
-.PHONY: pa_lib install uninstall version topinstall misc
+.PHONY: pa_lib install uninstall topinstall misc
 
 pa_lib:
 	$(MAKE) RESULT=pa_mikmatch_str pabc bcl
@@ -67,9 +67,6 @@ pa_lib:
 install: libinstall
 uninstall: libuninstall
 	rm -f $(BINDIR)/mikmatch_str.top $(BINDIR)/mikmatch_str
-
-version:
-	sed -e "s/VERSION/$(VERSION)/" < META.template > META
 
 topinstall:
 	install -m 0755 mikmatch_str.top mikmatch_str $(BINDIR)

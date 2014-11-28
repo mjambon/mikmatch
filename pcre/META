@@ -1,5 +1,4 @@
 name = "mikmatch_pcre"
-version = "VERSION"
 description = "Pattern matching extended with regexps in Ocamllex syntax"
 
 requires = "camlp4 pcre unix"
@@ -13,7 +12,6 @@ archive(native) = "run_mikmatch_pcre.cmxa"
 
 package "run" (
   description = "Subpackage providing only runtime support for mikmatch_pcre"
-  version = "VERSION"
   requires = "pcre unix"
   archive(byte) = "run_mikmatch_pcre.cma"
   archive(native) = "run_mikmatch_pcre.cmxa"
@@ -21,7 +19,6 @@ package "run" (
 
 package "syntax" (
   description = "Subpackage providing only syntax support for mikmatch_pcre"
-  version = "VERSION"
   requires = "pcre camlp4"
   archive(syntax,toploop) = "pa_mikmatch_pcre.cma"
   archive(syntax,preprocessor) = "pa_mikmatch_pcre.cma"

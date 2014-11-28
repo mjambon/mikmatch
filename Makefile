@@ -64,6 +64,9 @@ clean::
 VERSION = $(shell ./VERSION)
 export VERSION
 
+OCAMLFIND_INSTFLAGS = -patch-version $(VERSION)
+export OCAMLFIND_INSTFLAGS
+
 # Only for developers; requires camlmix, hevea, pdflatex 
 # and maybe other things.
 archive:
