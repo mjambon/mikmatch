@@ -588,7 +588,12 @@ let rec names patt =
     | Ast.PaMod _    (* (module M) *)
     | Ast.PaOlb _    (* ?s or ?s:(p) *)
     | Ast.PaOlbi _   (* ?s:(p = e) or ?(p = e) *)
-    | Ast.PaLab _ -> (* label *)
+    | Ast.PaLab _ (* label *)
+(*  (* OCaml >= 4.02 *)
+    | Ast.PaAtt _
+    | Ast.PaExc _
+*)
+    | _ ->
 	Messages.invalid_pattern _loc
 
 and recons_patt1 _loc p1 f =
