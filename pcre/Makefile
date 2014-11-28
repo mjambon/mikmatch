@@ -84,7 +84,7 @@ install: topinstall
 		$(MAKE) "LIBINSTALL_FILES=$(COMMON_LIBINSTALL_FILES) $(BC_LIBINSTALL_FILES)" libinstall; \
 	fi
 
-uninstall: 
+uninstall:
 	$(MAKE) libuninstall
 
 version:
@@ -94,11 +94,9 @@ misc-bc:
 	ocamlc -c mikmatch.mli
 	ocamlc -a -o run_mikmatch_pcre.cma -I $(PCRE_DIR) \
 		mikmatch.ml run_mikmatch_pcre.ml
-	ocamlmktop -o mikmatch_pcre.top \
-		-I +camlp4 -I $(PCRE_DIR) \
-		dynlink.cma \
-		camlp4o.cma \
-		pa_mikmatch_pcre.cma pcre.cma unix.cma run_mikmatch_pcre.cma
+	ocamlfind ocamlmktop -o mikmatch_pcre.top \
+	  -linkpkg -package camlp4.lib,pcre,unix \
+	  pa_mikmatch_pcre.cma run_mikmatch_pcre.cma
 
 misc-nc:
 	ocamlc -c mikmatch.mli
