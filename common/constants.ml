@@ -28,7 +28,6 @@ let patt_exit _loc =
   <:patt< $uid: !mod_runtime$.$uid:exn_exit$ >>
 
 let shared re_name = re_name ^ "shared"
-let subgroups2 re_name = re_name ^ "subgroups2"
 let shared_ovector re_name = re_name ^ "shared_ovector"
 
 let regexp_prefix = reserved_prefix ^ "regexp_"

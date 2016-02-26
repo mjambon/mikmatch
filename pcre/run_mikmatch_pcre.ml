@@ -9,14 +9,14 @@ let irflags = rflags []
 external make_substrings : string * int array -> substrings = "%identity"
 
 let search rex f ?(pos = 0) subj =
-  let subgroup_offsets, offset_vector = make_ovector rex in
+  let _, offset_vector = make_ovector rex in
   let substrings = make_substrings (subj, offset_vector) in
   let subj_len = String.length subj in
   let rec loop cur_pos =
     if 
       try
 	unsafe_pcre_exec 
-	  irflags rex ~pos:cur_pos ~subj_start:0 ~subj ~subgroups2:subgroup_offsets offset_vector None; true
+	  irflags rex ~pos:cur_pos ~subj_start:0 ~subj offset_vector None; true
       with Not_found -> false
     then
       (f substrings;
@@ -27,14 +27,14 @@ let search rex f ?(pos = 0) subj =
   loop pos
 
 let scan ~full rex pos ~ftext ~fmatch subj =
-  let subgroup_offsets, offset_vector = make_ovector rex in
+  let _, offset_vector = make_ovector rex in
   let substrings = make_substrings (subj, offset_vector) in
   let subj_len = String.length subj in
   let rec loop previous_last cur_pos =
     if 
       try
 	unsafe_pcre_exec 
-	  irflags rex ~pos:cur_pos ~subj_start:0 ~subj ~subgroups2:subgroup_offsets offset_vector None; true
+	  irflags rex ~pos:cur_pos ~subj_start:0 ~subj offset_vector None; true
       with Not_found -> 
 	let last = String.length subj in
 	if full || last > previous_last then

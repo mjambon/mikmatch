@@ -279,7 +279,6 @@ let process_regexp _loc ~sharing re re_name =
   let postbindings =
     if sharing then
       [ shared_id, <:expr< Pcre.make_ovector $get_re_noargs$ >>;
-	subgroups2 re_name, <:expr< fst $lid:shared_id$ >>;
 	shared_ovector re_name, <:expr< snd $lid:shared_id$ >> ]
     else [] in
   (re_args, re_source, named_groups, postbindings)
@@ -478,7 +477,6 @@ let macro_match ?(ignore_bindings = false)
   let target = <:expr< $lid:target_name$ >> in
   let substrings = substrings_of_target target in
   let sv = shared_ovector re_name in
-  let sg2 = subgroups2 re_name in
   let result =
     if ignore_bindings then expr
     else insert_bindings _loc substrings named_groups expr in
@@ -493,7 +491,7 @@ let macro_match ?(ignore_bindings = false)
 	    do { Pcre.unsafe_pcre_exec 
 		   (Obj.magic 0 : Pcre.irflag) 
 		   $get_re$ (match pos with [ None -> 0 | Some n -> n]) 
-		   $target$ $lid:sg2$
+		   0 $target$
 		   $lid:sv$ None;
 		 $lid:sv$ }) : Pcre.substrings) in
     $result$ >>
