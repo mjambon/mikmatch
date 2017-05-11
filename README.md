@@ -2,7 +2,7 @@ Mikmatch
 ========
 
 See `INSTALL` for the installation instructions.
-See http://mjambon.com/micmatch.html for the tutorial.
+See https://mjambon.github.io/mjambon2016/micmatch.html for the tutorial.
 See `pcre/test1.ml` for a complete set of examples.
 
 For any question or problem, please create a Github "issue".
