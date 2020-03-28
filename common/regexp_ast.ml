@@ -25,7 +25,7 @@ struct
 	    let positions = 
 	      List.sort
 		(fun (loc, i, conv1) (loc, j, conv2) -> 
-		   Pervasives.compare i j)
+		   Stdlib.compare i j)
 		data in
 	    (key, positions) :: accu)
 	 m [])

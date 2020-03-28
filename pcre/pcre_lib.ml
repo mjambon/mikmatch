@@ -386,8 +386,8 @@ let convert _loc conv e =
       None -> e
     | Some f ->
 	match f with
-	    `Int -> <:expr< Pervasives.int_of_string $e$ >>
-	  | `Float -> <:expr< Pervasives.float_of_string $e$ >>
+	    `Int -> <:expr< Stdlib.int_of_string $e$ >>
+	  | `Float -> <:expr< Stdlib.float_of_string $e$ >>
 	  | `Option -> <:expr< let s = $e$ in 
 	                       if s = "" then None 
 			       else Some s >>
