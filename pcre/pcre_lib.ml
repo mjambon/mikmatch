@@ -38,8 +38,10 @@ let quote_char c =
   match c with 
       '\\' | '^' | '$' | '.' | '[' | ']' | '|' 
     | '(' | ')' | '?' | '*' | '+' | '{' | '}' -> 
-	let s = String.create 2 in
-	s.[0] <- '\\'; s.[1] <- c; s
+	let s = Bytes.create 2 in
+	Bytes.set s 0 '\\';
+	Bytes.set s 1 c;
+	Bytes.unsafe_to_string s
     | '\000' -> "\\000"
     | c -> string c
 

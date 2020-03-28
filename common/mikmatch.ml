@@ -36,24 +36,24 @@ let lines_of_file file =
 
 let channel_contents ic =
   let len = 2048 in
-  let buf = String.create len in
+  let buf = Bytes.create len in
   let rec loop size accu =
     match input ic buf 0 len with
 	0 -> (accu, size)
-      | n when n = len -> loop (size + n) (String.copy buf :: accu)
-      | n -> loop (size + n) (String.sub buf 0 n :: accu) in
+      | n when n = len -> loop (size + n) (Bytes.copy buf :: accu)
+      | n -> loop (size + n) (Bytes.sub buf 0 n :: accu) in
 
   let accu, size = loop 0 [] in
-  let result = String.create size in
+  let result = Bytes.create size in
   let rec loop2 last_pos = function
       [] -> assert (last_pos = 0)
     | s :: rest ->
-	let len = String.length s in
+	let len = Bytes.length s in
 	let pos = last_pos - len in
-	String.blit s 0 result pos len;
+	Bytes.blit s 0 result pos len;
 	loop2 pos rest in
   loop2 size accu;
-  result
+  Bytes.unsafe_to_string result
 
 
 let file_contents ?(bin = false) file =
