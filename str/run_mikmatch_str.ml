@@ -5,8 +5,8 @@ let nocase s =
   let buf = Buffer.create (4 * len) in
   for i = 0 to len - 1 do
     let c = s.[i] in
-    let cl = Char.lowercase c
-    and cu = Char.uppercase c in
+    let cl = Char.lowercase_ascii c
+    and cu = Char.uppercase_ascii c in
     if cl <> cu then (* in this case, cl and cu are letters *)
       Printf.bprintf buf "[%c%c]" cl cu
     else

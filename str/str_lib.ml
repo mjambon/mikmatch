@@ -44,8 +44,10 @@ let string c = String.make 1 c
 
 let quote_char = function
     '[' | ']' | '*' | '.' | '\\' | '?' | '+' | '^' | '$' as c ->
-      let s = String.create 2 in
-      s.[0] <- '\\'; s.[1] <- c; s
+      let s = Bytes.create 2 in
+      Bytes.set s 0 '\\';
+      Bytes.set s 1 c;
+      Bytes.unsafe_to_string s
   | c -> string c
 
 
