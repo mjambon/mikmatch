@@ -18,3 +18,11 @@ pcre/mikmatch.ml
 pcre/mikmatch.mli
 pcre/mm_util.ml
 pcre/syntax_common.ml
+
+str/global_def.ml
+str/global_def.mli
+str/match.ml
+str/mikmatch.ml
+str/mikmatch.mli
+str/mm_util.ml
+str/syntax_common.ml
