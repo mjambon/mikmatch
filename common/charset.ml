@@ -34,8 +34,8 @@ let list = C.elements
 let nocase set =
   C.fold 
     (fun c set -> 
-       let c1 = Char.lowercase c 
-       and c2 = Char.uppercase c in
+       let c1 = Char.lowercase_ascii c 
+       and c2 = Char.uppercase_ascii c in
        let set1 = C.add c1 set in
        if c1 <> c2 then C.add c2 set1
        else set1)
