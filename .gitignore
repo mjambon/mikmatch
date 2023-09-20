@@ -26,3 +26,5 @@ str/mikmatch.ml
 str/mikmatch.mli
 str/mm_util.ml
 str/syntax_common.ml
+
+/_opam

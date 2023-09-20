@@ -92,7 +92,7 @@ misc-bc:
 	ocamlc -a -o run_mikmatch_pcre.cma -I $(PCRE_DIR) \
 		mikmatch.ml run_mikmatch_pcre.ml
 	ocamlfind ocamlmktop -o mikmatch_pcre.top \
-	  -linkpkg -package camlp4.lib,pcre,unix \
+	  -linkpkg -package camlp-streams,camlp4.lib,pcre,unix \
 	  pa_mikmatch_pcre.cma run_mikmatch_pcre.cma
 
 misc-nc:
